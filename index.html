@@ -82,6 +82,27 @@
         .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
         .badge-low { background: rgba(255,138,128,0.2); color: #e53935; }
         .badge-ok { background: rgba(76,175,80,0.15); color: #2e7d32; }
+        .druck-btn { background: transparent; border: 2px solid #999; color: #666; }
+        body.dark-mode .druck-btn { color: #aaa; border-color: #aaa; }
+        .druck-btn:hover { background: #eee; }
+
+        /* Druck-Stile */
+        @media print {
+            body { background: white !important; padding: 0; margin: 0; }
+            .container { box-shadow: none; border: none; padding: 20px; backdrop-filter: none; background: white !important; max-width: 100%; }
+            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn,
+            .modal-overlay, .tabs, .manage-kat-btn, .logout-btn, .dark-mode-btn, .password-btn, .edit-btn, .auswahl-checkbox,
+            .artikel-actions, .liste-actions, .modal, .close-modal, .btn-danger, .btn-selection, .btn-aktivitaeten,
+            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .einladenFormular {
+                display: none !important;
+            }
+            .artikel-item, .liste-row { border-bottom: 1px solid #ccc; padding: 8px 0; }
+            .artikel-text, .artikel-menge, .artikel-preis { color: black !important; font-size: 14px; }
+            h1, h2, h3 { color: black !important; -webkit-text-fill-color: black !important; background: none !important; }
+            table { border-collapse: collapse; width: 100%; }
+            th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+        }
+
         @media (max-width: 480px) {
             body { padding: 12px; }
             .container { padding: 24px 16px; border-radius: 22px; }
@@ -117,13 +138,14 @@
             <button class="nav-btn" data-view="team" onclick="switchView('team')">👥 Team</button>
         </div>
 
-        <!-- Artikel-View (unverändert) -->
+        <!-- Artikel-View -->
         <div id="viewArtikel">
             <div class="row" style="margin-bottom:20px;">
                 <select id="filterKategorie" onchange="loadArtikel()">
                     <option value="">Alle Kategorien</option>
                 </select>
                 <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
+                <button class="btn druck-btn" onclick="window.print()">🖨️ Drucken</button>
             </div>
             <div id="artikelTabelle"></div>
 
@@ -143,7 +165,7 @@
             </div>
         </div>
 
-        <!-- Buchungen-View (unverändert) -->
+        <!-- Buchungen-View -->
         <div id="viewBuchungen" class="hidden">
             <div class="row" style="margin-bottom:20px;">
                 <select id="filterBuchungArtikel" onchange="loadBuchungen()">
@@ -171,7 +193,7 @@
             </div>
         </div>
 
-        <!-- Kategorien-View (NEU) -->
+        <!-- Kategorien-View -->
         <div id="viewKategorien" class="hidden">
             <div class="row" style="margin-bottom:20px;">
                 <button class="btn btn-primary" onclick="openKategorieFormular()">➕ Neue Kategorie</button>
@@ -189,7 +211,7 @@
             </div>
         </div>
 
-        <!-- Team-View (unverändert) -->
+        <!-- Team-View -->
         <div id="viewTeam" class="hidden">
             <h3>Team-Mitglieder</h3>
             <div id="teamTabelle"></div>
@@ -293,7 +315,6 @@ function switchView(view) {
     else if (view === 'team') { document.getElementById('viewTeam').classList.remove('hidden'); loadTeam(); }
 }
 
-// Kategorien (global für Dropdowns)
 async function loadKategorien() {
     try { const r = await apiCall('/kategorien'); if (r.ok) kategorienCache = await r.json(); } catch {}
     populateKatSelects();
@@ -308,7 +329,6 @@ function populateKatSelects() {
     });
 }
 
-// ---- Kategorien-View (NEU) ----
 function loadKategorienView() {
     const container = document.getElementById('kategorienTabelle');
     if (kategorienCache.length === 0) { container.innerHTML = '<p>Keine Kategorien vorhanden.</p>'; return; }
@@ -359,7 +379,6 @@ async function deleteKategorie(id) {
     try { await apiCall('/kategorien/' + id, { method: 'DELETE' }); loadKategorien(); loadKategorienView(); } catch { alert('Fehler'); }
 }
 
-// Artikel (unverändert)
 async function loadArtikel() {
     const kat = document.getElementById('filterKategorie').value;
     try {
@@ -431,7 +450,6 @@ async function deleteArtikel(id) {
     try { await apiCall('/artikel/' + id, { method: 'DELETE' }); loadArtikel(); } catch { alert('Fehler'); }
 }
 
-// Buchungen (unverändert)
 async function loadBuchungen() {
     const artId = document.getElementById('filterBuchungArtikel').value;
     try {
@@ -468,7 +486,6 @@ async function doBuchung() {
     } catch { alert('Fehler'); }
 }
 
-// Team (unverändert)
 async function loadTeam() {
     try {
         const r = await apiCall('/team');
