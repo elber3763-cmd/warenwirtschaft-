@@ -85,6 +85,9 @@
         .import-btn { background: transparent; border: 2px solid #1976d2; color: #1976d2; }
         body.dark-mode .import-btn { border-color: #64b5f6; color: #64b5f6; }
         .import-btn:hover { background: rgba(25,118,210,0.1); }
+        .bestell-btn { background: transparent; border: 2px solid #f57c00; color: #f57c00; }
+        body.dark-mode .bestell-btn { border-color: #ffb74d; color: #ffb74d; }
+        .bestell-btn:hover { background: rgba(245,124,0,0.1); }
         .druck-btn { background: transparent; border: 2px solid #999; color: #666; }
         body.dark-mode .druck-btn { color: #aaa; border-color: #aaa; }
         .druck-btn:hover { background: #eee; }
@@ -97,16 +100,16 @@
         body.dark-mode .csv-btn { border-color: #66bb6a; color: #66bb6a; }
         .csv-btn:hover { background: rgba(76,175,80,0.1); }
 
-        .import-status { margin-top: 8px; font-size: 13px; }
+        .import-status, .bestell-status { margin-top: 8px; font-size: 13px; }
 
         /* Druck-Stile */
         @media print {
             body { background: white !important; padding: 0; margin: 0; }
             .container { box-shadow: none; border: none; padding: 20px; backdrop-filter: none; background: white !important; max-width: 100%; }
-            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn, .csv-btn, .import-btn,
+            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn, .csv-btn, .import-btn, .bestell-btn,
             .modal-overlay, .tabs, .manage-kat-btn, .logout-btn, .dark-mode-btn, .password-btn, .edit-btn, .auswahl-checkbox,
             .artikel-actions, .liste-actions, .modal, .close-modal, .btn-danger, .btn-selection, .btn-aktivitaeten,
-            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .lieferantFormular, .einladenFormular, .import-status {
+            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .lieferantFormular, .einladenFormular, .import-status, .bestell-status, .bestell-export-btn {
                 display: none !important;
             }
             .artikel-item, .liste-row { border-bottom: 1px solid #ccc; padding: 8px 0; }
@@ -162,11 +165,24 @@
                 <button class="btn csv-btn" onclick="exportiereCSV()">📥 CSV Export</button>
                 <button class="btn import-btn" onclick="document.getElementById('importFileInput').click()">📤 CSV Import</button>
                 <input type="file" id="importFileInput" accept=".csv" class="hidden" onchange="importCSV(event)">
+                <button class="btn bestell-btn" onclick="ladeBestellvorschlag()">📋 Bestellvorschlag</button>
                 <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
                 <button class="btn druck-btn" onclick="window.print()">🖨️ Drucken</button>
             </div>
             <div id="importStatus" class="import-status"></div>
+            <div id="bestellStatus" class="bestell-status"></div>
+
+            <!-- Normale Artikeltabelle -->
             <div id="artikelTabelle"></div>
+
+            <!-- Bestellvorschlag (initial ausgeblendet) -->
+            <div id="bestellvorschlagContainer" class="hidden">
+                <div class="row" style="margin-bottom:15px;">
+                    <button class="btn" onclick="zeigeArtikelTabelle()">⬅ Zurück zur Artikelliste</button>
+                    <button class="btn csv-btn bestell-export-btn" onclick="exportiereBestellvorschlagCSV()">📥 CSV Export</button>
+                </div>
+                <div id="bestellvorschlagTabelle"></div>
+            </div>
 
             <div id="artikelFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
                 <h3 id="artikelFormTitel">Neuen Artikel anlegen</h3>
@@ -280,6 +296,7 @@ let kritischerFilterAktiv = false;
 let kategorienCache = [];
 let lieferantenCache = [];
 let artikelCache = [];
+let bestellvorschlagCache = [];
 
 async function apiCall(url, options = {}) {
     const token = localStorage.getItem('token');
@@ -354,14 +371,13 @@ function switchView(view) {
     document.getElementById('viewKategorien').classList.add('hidden');
     document.getElementById('viewLieferanten').classList.add('hidden');
     document.getElementById('viewTeam').classList.add('hidden');
-    if (view === 'artikel') { document.getElementById('viewArtikel').classList.remove('hidden'); loadArtikel(); }
+    if (view === 'artikel') { document.getElementById('viewArtikel').classList.remove('hidden'); zeigeArtikelTabelle(); }
     else if (view === 'buchungen') { document.getElementById('viewBuchungen').classList.remove('hidden'); loadBuchungen(); }
     else if (view === 'kategorien') { document.getElementById('viewKategorien').classList.remove('hidden'); loadKategorienView(); }
     else if (view === 'lieferanten') { document.getElementById('viewLieferanten').classList.remove('hidden'); loadLieferantenView(); }
     else if (view === 'team') { document.getElementById('viewTeam').classList.remove('hidden'); loadTeam(); }
 }
 
-// Kritischer Filter
 function toggleKritischerFilter() {
     kritischerFilterAktiv = !kritischerFilterAktiv;
     const btn = document.getElementById('btnKritisch');
@@ -375,7 +391,6 @@ function toggleKritischerFilter() {
     loadArtikel();
 }
 
-// CSV-Export
 function exportiereCSV() {
     if (artikelCache.length === 0) {
         alert('Keine Artikel zum Exportieren vorhanden.');
@@ -391,32 +406,47 @@ function exportiereCSV() {
     ]);
     let csv = header.join(';') + '\n';
     rows.forEach(r => csv += r.join(';') + '\n');
-
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'artikel_export.csv';
-    a.click();
+    a.href = url; a.download = 'artikel_export.csv'; a.click();
     URL.revokeObjectURL(url);
 }
 
-// CSV-Import
+function exportiereBestellvorschlagCSV() {
+    if (bestellvorschlagCache.length === 0) {
+        alert('Kein Bestellvorschlag geladen.');
+        return;
+    }
+    const header = ['Name', 'Bestand', 'Mindestbestand', 'Nachbestellen', 'Lieferant'];
+    const rows = bestellvorschlagCache.map(b => [
+        b.name,
+        b.bestand || 0,
+        b.mindestbestand,
+        b.nachbestellen,
+        b.lieferant_name || ''
+    ]);
+    let csv = header.join(';') + '\n';
+    rows.forEach(r => csv += r.join(';') + '\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'bestellvorschlag.csv'; a.click();
+    URL.revokeObjectURL(url);
+}
+
 async function importCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     const statusDiv = document.getElementById('importStatus');
     statusDiv.textContent = 'Importiere...';
     statusDiv.className = 'import-status';
-
     try {
         const resp = await apiCall('/artikel/import', {
             method: 'POST',
             headers: { 'Content-Type': 'text/csv' },
             body: file
         });
-
         const result = await resp.json();
         if (resp.ok) {
             statusDiv.textContent = `✅ ${result.importiert} von ${result.gesamt} Artikeln importiert.`;
@@ -430,9 +460,53 @@ async function importCSV(event) {
         statusDiv.textContent = '❌ Netzwerkfehler beim Import.';
         statusDiv.className = 'import-status error';
     }
-
-    // Input leeren, damit dieselbe Datei erneut ausgewählt werden kann
     event.target.value = '';
+}
+
+// ---------- Bestellvorschlag ----------
+async function ladeBestellvorschlag() {
+    const statusDiv = document.getElementById('bestellStatus');
+    statusDiv.textContent = 'Lade Bestellvorschlag...';
+    statusDiv.className = 'bestell-status';
+    try {
+        const resp = await apiCall('/artikel/bestellvorschlag');
+        if (resp.ok) {
+            bestellvorschlagCache = await resp.json();
+            zeigeBestellvorschlag();
+            statusDiv.textContent = '';
+        } else {
+            statusDiv.textContent = '❌ Fehler beim Laden.';
+            statusDiv.className = 'bestell-status error';
+        }
+    } catch {
+        statusDiv.textContent = '❌ Netzwerkfehler.';
+        statusDiv.className = 'bestell-status error';
+    }
+}
+
+function zeigeBestellvorschlag() {
+    document.getElementById('artikelTabelle').classList.add('hidden');
+    document.getElementById('bestellvorschlagContainer').classList.remove('hidden');
+    const container = document.getElementById('bestellvorschlagTabelle');
+    if (bestellvorschlagCache.length === 0) {
+        container.innerHTML = '<p>Keine kritischen Artikel vorhanden.</p>';
+        return;
+    }
+    let html = '<table><thead><tr><th>Name</th><th>Bestand</th><th>Mindest.</th><th>Nachbestellen</th><th>Lieferant</th></tr></thead><tbody>';
+    bestellvorschlagCache.forEach(b => {
+        html += `<tr>
+            <td>${b.name}</td><td>${b.bestand || 0}</td><td>${b.mindestbestand}</td>
+            <td><strong>${b.nachbestellen}</strong></td><td>${b.lieferant_name || '–'}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function zeigeArtikelTabelle() {
+    document.getElementById('bestellvorschlagContainer').classList.add('hidden');
+    document.getElementById('artikelTabelle').classList.remove('hidden');
+    loadArtikel();
 }
 
 // ---------- Kategorien ----------
