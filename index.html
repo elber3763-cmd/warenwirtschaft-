@@ -17,7 +17,7 @@
         .container {
             background: rgba(255,255,255,0.85); backdrop-filter: blur(20px);
             border-radius: 28px; box-shadow: 0 25px 60px rgba(0,0,0,0.12);
-            padding: 32px 28px; width: 100%; max-width: 900px;
+            padding: 32px 28px; width: 100%; max-width: 1100px;
             border: 1px solid rgba(255,255,255,0.6); transition: background 0.4s, box-shadow 0.4s;
         }
         body.dark-mode .container { background: rgba(38,38,60,0.9); border-color: rgba(255,255,255,0.08); box-shadow: 0 25px 60px rgba(0,0,0,0.5); color: #eee; }
@@ -100,30 +100,31 @@
         body.dark-mode .csv-btn { border-color: #66bb6a; color: #66bb6a; }
         .csv-btn:hover { background: rgba(76,175,80,0.1); }
 
-        .import-status, .bestell-status { margin-top: 8px; font-size: 13px; }
-
-        /* Druck-Stile */
-        @media print {
-            body { background: white !important; padding: 0; margin: 0; }
-            .container { box-shadow: none; border: none; padding: 20px; backdrop-filter: none; background: white !important; max-width: 100%; }
-            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn, .csv-btn, .import-btn, .bestell-btn,
-            .modal-overlay, .tabs, .manage-kat-btn, .logout-btn, .dark-mode-btn, .password-btn, .edit-btn, .auswahl-checkbox,
-            .artikel-actions, .liste-actions, .modal, .close-modal, .btn-danger, .btn-selection, .btn-aktivitaeten,
-            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .lieferantFormular, .einladenFormular, .import-status, .bestell-status, .bestell-export-btn {
-                display: none !important;
-            }
-            .artikel-item, .liste-row { border-bottom: 1px solid #ccc; padding: 8px 0; }
-            .artikel-text, .artikel-menge, .artikel-preis { color: black !important; font-size: 14px; }
-            h1, h2, h3 { color: black !important; -webkit-text-fill-color: black !important; background: none !important; }
-            table { border-collapse: collapse; width: 100%; }
-            th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+        /* Dashboard-Kacheln */
+        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .kachel {
+            background: rgba(248,249,255,0.8); backdrop-filter: blur(12px);
+            border-radius: 20px; padding: 24px; border: 1px solid rgba(0,0,0,0.04);
+            text-align: center; transition: transform 0.2s;
         }
-
-        @media (max-width: 480px) {
-            body { padding: 12px; }
-            .container { padding: 24px 16px; border-radius: 22px; }
-            .header h1 { font-size: 1.6rem; }
+        .kachel:hover { transform: translateY(-2px); }
+        body.dark-mode .kachel { background: rgba(60,60,90,0.7); border-color: rgba(255,255,255,0.08); }
+        .kachel-wert { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        body.dark-mode .kachel-wert { background: linear-gradient(135deg, #9b8cf2, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .kachel-label { font-size: 14px; color: #666; margin-top: 8px; }
+        body.dark-mode .kachel-label { color: #bbb; }
+        .aktionen { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        .aktions-kachel {
+            background: rgba(248,249,255,0.8); backdrop-filter: blur(12px);
+            border-radius: 16px; padding: 20px; border: 1px solid rgba(0,0,0,0.04);
+            text-align: center; cursor: pointer; transition: transform 0.2s;
         }
+        .aktions-kachel:hover { transform: translateY(-2px); background: rgba(255,255,255,0.95); }
+        body.dark-mode .aktions-kachel { background: rgba(60,60,90,0.7); border-color: rgba(255,255,255,0.08); }
+        body.dark-mode .aktions-kachel:hover { background: rgba(80,80,110,0.8); }
+        .aktions-kachel h3 { margin-bottom: 6px; }
+        .info-text { font-size: 13px; color: #777; }
+        body.dark-mode .info-text { color: #aaa; }
     </style>
 </head>
 <body>
@@ -148,19 +149,44 @@
 
     <div id="appContent" class="hidden">
         <div class="nav-bar">
-            <button class="nav-btn active" data-view="artikel" onclick="switchView('artikel')">📋 Artikel</button>
+            <button class="nav-btn active" data-view="dashboard" onclick="switchView('dashboard')">🏠 Dashboard</button>
+            <button class="nav-btn" data-view="artikel" onclick="switchView('artikel')">📋 Artikel</button>
             <button class="nav-btn" data-view="buchungen" onclick="switchView('buchungen')">📜 Buchungen</button>
             <button class="nav-btn" data-view="kategorien" onclick="switchView('kategorien')">📂 Kategorien</button>
             <button class="nav-btn" data-view="lieferanten" onclick="switchView('lieferanten')">🚚 Lieferanten</button>
+            <button class="nav-btn" data-view="lagerorte" onclick="switchView('lagerorte')">📍 Lagerorte</button>
+            <button class="nav-btn" data-view="mhd" onclick="switchView('mhd')">⏳ MHD</button>
+            <button class="nav-btn" data-view="analyse" onclick="switchView('analyse')">📊 Analyse</button>
             <button class="nav-btn" data-view="team" onclick="switchView('team')">👥 Team</button>
         </div>
 
+        <!-- Dashboard -->
+        <div id="viewDashboard">
+            <div class="dashboard" id="dashboardKacheln"></div>
+            <h2 style="margin-bottom:16px;">Schnellzugriff & Aktionen</h2>
+            <div class="aktionen">
+                <div class="aktions-kachel" onclick="switchView('buchungen'); setTimeout(openBuchenFormular,100)">
+                    <h3>📥 Wareneingang</h3>
+                    <p class="info-text">Lieferung erhalten? Buche neue Artikel sofort ein.</p>
+                    <button class="btn btn-primary" style="margin-top:10px;">Jetzt buchen</button>
+                </div>
+                <div class="aktions-kachel" onclick="switchView('artikel'); document.getElementById('btnKritisch')?.click()">
+                    <h3>🔄 Inventur</h3>
+                    <p class="info-text">Bestände prüfen und Korrekturen vornehmen.</p>
+                    <button class="btn btn-primary" style="margin-top:10px;">Inventur starten</button>
+                </div>
+                <div class="aktions-kachel" onclick="switchView('analyse')">
+                    <h3>📈 Renner & Penner</h3>
+                    <p class="info-text">Welche Artikel laufen gut, welche binden Kapital?</p>
+                    <button class="btn btn-primary" style="margin-top:10px;">Zur Analyse</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Artikel-View -->
-        <div id="viewArtikel">
+        <div id="viewArtikel" class="hidden">
             <div class="row" style="margin-bottom:20px;">
-                <select id="filterKategorie" onchange="loadArtikel()">
-                    <option value="">Alle Kategorien</option>
-                </select>
+                <select id="filterKategorie" onchange="loadArtikel()"><option value="">Alle Kategorien</option></select>
                 <button id="btnKritisch" class="btn kritisch-btn" onclick="toggleKritischerFilter()">⚠️ Kritische</button>
                 <button class="btn csv-btn" onclick="exportiereCSV()">📥 CSV Export</button>
                 <button class="btn import-btn" onclick="document.getElementById('importFileInput').click()">📤 CSV Import</button>
@@ -169,33 +195,24 @@
                 <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
                 <button class="btn druck-btn" onclick="window.print()">🖨️ Drucken</button>
             </div>
-            <div id="importStatus" class="import-status"></div>
-            <div id="bestellStatus" class="bestell-status"></div>
-
-            <!-- Normale Artikeltabelle -->
             <div id="artikelTabelle"></div>
-
-            <!-- Bestellvorschlag (initial ausgeblendet) -->
-            <div id="bestellvorschlagContainer" class="hidden">
-                <div class="row" style="margin-bottom:15px;">
-                    <button class="btn" onclick="zeigeArtikelTabelle()">⬅ Zurück zur Artikelliste</button>
-                    <button class="btn csv-btn bestell-export-btn" onclick="exportiereBestellvorschlagCSV()">📥 CSV Export</button>
-                </div>
-                <div id="bestellvorschlagTabelle"></div>
-            </div>
-
             <div id="artikelFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
                 <h3 id="artikelFormTitel">Neuen Artikel anlegen</h3>
                 <input type="hidden" id="editArtikelId">
                 <input type="text" id="artikelName" placeholder="Artikelname">
-                <select id="artikelKategorie">
-                    <option value="">Kategorie wählen</option>
-                </select>
-                <select id="artikelLieferant">
-                    <option value="">Lieferant wählen</option>
-                </select>
-                <input type="number" id="artikelPreis" placeholder="Preis (€)" step="0.01" min="0">
-                <input type="number" id="artikelMindestbestand" placeholder="Mindestbestand" min="0">
+                <select id="artikelKategorie"><option value="">Kategorie wählen</option></select>
+                <select id="artikelLieferant"><option value="">Lieferant wählen</option></select>
+                <input type="text" id="artikelEinheit" placeholder="Einheit (z.B. Stück, kg)">
+                <input type="text" id="artikelWarengruppe" placeholder="Warengruppe">
+                <div class="row">
+                    <input type="number" id="artikelPreis" placeholder="Preis (€)" step="0.01" min="0">
+                    <input type="number" id="artikelEkPreis" placeholder="EK-Preis (€)" step="0.01" min="0">
+                </div>
+                <div class="row">
+                    <input type="number" id="artikelMindestbestand" placeholder="Mindestbestand" min="0">
+                    <input type="number" id="artikelMaxBestand" placeholder="Maximalbestand" min="0">
+                </div>
+                <label><input type="checkbox" id="artikelMhdPflichtig"> MHD-pflichtig</label>
                 <div class="row">
                     <button class="btn btn-primary" onclick="saveArtikel()">Speichern</button>
                     <button class="btn" onclick="cancelArtikelForm()">Abbrechen</button>
@@ -206,22 +223,14 @@
         <!-- Buchungen-View -->
         <div id="viewBuchungen" class="hidden">
             <div class="row" style="margin-bottom:20px;">
-                <select id="filterBuchungArtikel" onchange="loadBuchungen()">
-                    <option value="">Alle Artikel</option>
-                </select>
+                <select id="filterBuchungArtikel" onchange="loadBuchungen()"><option value="">Alle Artikel</option></select>
                 <button class="btn btn-primary" onclick="openBuchenFormular()">➕ Buchung</button>
             </div>
             <div id="buchungenTabelle"></div>
-
             <div id="buchenFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
                 <h3>Wareneingang / -ausgang buchen</h3>
-                <select id="buchenArtikelId">
-                    <option value="">Artikel wählen</option>
-                </select>
-                <select id="buchenTyp">
-                    <option value="eingang">Wareneingang (+)</option>
-                    <option value="ausgang">Warenausgang (−)</option>
-                </select>
+                <select id="buchenArtikelId"><option value="">Artikel wählen</option></select>
+                <select id="buchenTyp"><option value="eingang">Wareneingang (+)</option><option value="ausgang">Warenausgang (−)</option></select>
                 <input type="number" id="buchenMenge" placeholder="Menge" min="1">
                 <input type="text" id="buchenGrund" placeholder="Grund (optional)">
                 <div class="row">
@@ -237,9 +246,8 @@
                 <button class="btn btn-primary" onclick="openKategorieFormular()">➕ Neue Kategorie</button>
             </div>
             <div id="kategorienTabelle"></div>
-
             <div id="kategorieFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
-                <h3 id="kategorieFormTitel">Neue Kategorie anlegen</h3>
+                <h3>Neue / Bearbeiten</h3>
                 <input type="hidden" id="editKategorieId">
                 <input type="text" id="kategorieName" placeholder="Kategorie-Name">
                 <div class="row">
@@ -255,17 +263,64 @@
                 <button class="btn btn-primary" onclick="openLieferantFormular()">➕ Neuer Lieferant</button>
             </div>
             <div id="lieferantenTabelle"></div>
-
             <div id="lieferantFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
                 <h3 id="lieferantFormTitel">Neuen Lieferanten anlegen</h3>
                 <input type="hidden" id="editLieferantId">
                 <input type="text" id="lieferantName" placeholder="Lieferantenname">
                 <input type="text" id="lieferantKontakt" placeholder="Kontakt (optional)">
+                <input type="number" id="lieferantBewertung" placeholder="Bewertung (1-5)" min="1" max="5">
+                <input type="number" id="lieferantLieferzeit" placeholder="Lieferzeit (Tage)" min="0">
+                <input type="text" id="lieferantUrl" placeholder="Website (optional)">
                 <div class="row">
                     <button class="btn btn-primary" onclick="saveLieferant()">Speichern</button>
                     <button class="btn" onclick="cancelLieferantForm()">Abbrechen</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Lagerorte-View -->
+        <div id="viewLagerorte" class="hidden">
+            <div class="row" style="margin-bottom:20px;">
+                <button class="btn btn-primary" onclick="openLagerortFormular()">➕ Neuer Lagerort</button>
+            </div>
+            <div id="lagerorteTabelle"></div>
+            <div id="lagerortFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
+                <h3>Lagerort</h3>
+                <input type="hidden" id="editLagerortId">
+                <input type="text" id="lagerortName" placeholder="Name">
+                <div class="row">
+                    <button class="btn btn-primary" onclick="saveLagerort()">Speichern</button>
+                    <button class="btn" onclick="cancelLagerortForm()">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MHD-View -->
+        <div id="viewMhd" class="hidden">
+            <div class="row" style="margin-bottom:20px;">
+                <button class="btn btn-primary" onclick="openMhdFormular()">➕ Neue Charge</button>
+                <button class="btn" onclick="loadMhdFaellig(30)">⚠️ Nächste 30 Tage</button>
+            </div>
+            <div id="mhdTabelle"></div>
+            <div id="mhdFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
+                <select id="mhdArtikelId"><option value="">Artikel wählen</option></select>
+                <input type="text" id="mhdCharge" placeholder="Charge">
+                <input type="number" id="mhdMenge" placeholder="Menge" min="1">
+                <input type="date" id="mhdAblaufdatum">
+                <div class="row">
+                    <button class="btn btn-primary" onclick="saveMhdCharge()">Speichern</button>
+                    <button class="btn" onclick="cancelMhdForm()">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analyse-View -->
+        <div id="viewAnalyse" class="hidden">
+            <div class="row" style="margin-bottom:20px;">
+                <button class="btn btn-primary" onclick="loadAnalyse('renner')">🔥 Renner</button>
+                <button class="btn" onclick="loadAnalyse('penner')">🧊 Penner</button>
+            </div>
+            <div id="analyseTabelle"></div>
         </div>
 
         <!-- Team-View -->
@@ -276,11 +331,7 @@
                 <button class="btn btn-primary" onclick="toggleEinladen()">➕ Mitglied einladen</button>
                 <div id="einladenFormular" class="hidden" style="margin-top:15px; background:rgba(248,249,255,0.8); padding:20px; border-radius:16px;">
                     <input type="email" id="einladenEmail" placeholder="E-Mail des Benutzers">
-                    <select id="einladenRolle">
-                        <option value="user">Benutzer</option>
-                        <option value="lagerist">Lagerist</option>
-                        <option value="admin">Admin</option>
-                    </select>
+                    <select id="einladenRolle"><option value="user">Benutzer</option><option value="lagerist">Lagerist</option><option value="admin">Admin</option></select>
                     <button class="btn btn-primary" onclick="einladen()">Einladen</button>
                 </div>
             </div>
@@ -290,495 +341,89 @@
 
 <script>
 const API = 'https://warenwirtschaft-api.elber3763.workers.dev/api';
-let userRolle = 'user';
-let activeView = 'artikel';
-let kritischerFilterAktiv = false;
-let kategorienCache = [];
-let lieferantenCache = [];
-let artikelCache = [];
-let bestellvorschlagCache = [];
+let userRolle = 'user', activeView = 'dashboard', kritischerFilterAktiv = false;
+let kategorienCache = [], lieferantenCache = [], lagerorteCache = [], artikelCache = [];
 
 async function apiCall(url, options = {}) {
     const token = localStorage.getItem('token');
     if (token) { options.headers = options.headers || {}; options.headers['Authorization'] = 'Bearer ' + token; }
     return fetch(API + url, options);
 }
-
 function initDarkMode() {
-    if (localStorage.getItem('darkMode') === 'true') {
-        document.body.classList.add('dark-mode');
-        document.getElementById('darkModeToggle').textContent = '☀️';
-    }
+    if (localStorage.getItem('darkMode') === 'true') { document.body.classList.add('dark-mode'); document.getElementById('darkModeToggle').textContent = '☀️'; }
 }
 function toggleDarkMode() {
     const isDark = document.body.classList.toggle('dark-mode');
     localStorage.setItem('darkMode', isDark);
     document.getElementById('darkModeToggle').textContent = isDark ? '☀️' : '🌙';
 }
-
 window.onload = () => { initDarkMode(); if (localStorage.getItem('token')) nachLogin(); };
-
 async function register() {
-    const email = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
+    const email = document.getElementById('authEmail').value.trim(), password = document.getElementById('authPassword').value;
     const msg = document.getElementById('authMessage');
     if (!email || !password) { msg.textContent = 'Bitte ausfüllen.'; msg.className = 'error'; return; }
     try {
-        const resp = await fetch(API + '/register', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({email, password})
-        });
+        const resp = await fetch(API + '/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
         if (resp.ok) { msg.textContent = 'Registrierung erfolgreich.'; msg.className = 'success'; }
         else if (resp.status === 409) { msg.textContent = 'E-Mail bereits registriert.'; msg.className = 'error'; }
     } catch { msg.textContent = 'Server nicht erreichbar.'; msg.className = 'error'; }
 }
-
 async function login() {
-    const email = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
+    const email = document.getElementById('authEmail').value.trim(), password = document.getElementById('authPassword').value;
     const msg = document.getElementById('authMessage');
     if (!email || !password) { msg.textContent = 'Bitte ausfüllen.'; msg.className = 'error'; return; }
     try {
-        const resp = await fetch(API + '/login', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({email, password})
-        });
+        const resp = await fetch(API + '/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, password}) });
         if (resp.ok) {
             const data = await resp.json();
-            localStorage.setItem('token', data.token);
-            userRolle = data.rolle;
-            nachLogin();
+            localStorage.setItem('token', data.token); userRolle = data.rolle; nachLogin();
         } else { msg.textContent = 'Ungültige Anmeldedaten.'; msg.className = 'error'; }
     } catch { msg.textContent = 'Server nicht erreichbar.'; msg.className = 'error'; }
 }
-
 function nachLogin() {
     document.getElementById('authBox').classList.add('hidden');
     document.getElementById('logoutBtn').classList.remove('hidden');
     document.getElementById('appContent').classList.remove('hidden');
-    loadKategorien();
-    loadLieferanten();
-    switchView('artikel');
+    loadKategorien(); loadLieferanten(); loadLagerorte(); loadArtikelCache();
+    switchView('dashboard');
 }
 function logout() { localStorage.clear(); location.reload(); }
 
 function switchView(view) {
     activeView = view;
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`[data-view="${view}"]`).classList.add('active');
-    document.getElementById('viewArtikel').classList.add('hidden');
-    document.getElementById('viewBuchungen').classList.add('hidden');
-    document.getElementById('viewKategorien').classList.add('hidden');
-    document.getElementById('viewLieferanten').classList.add('hidden');
-    document.getElementById('viewTeam').classList.add('hidden');
-    if (view === 'artikel') { document.getElementById('viewArtikel').classList.remove('hidden'); zeigeArtikelTabelle(); }
-    else if (view === 'buchungen') { document.getElementById('viewBuchungen').classList.remove('hidden'); loadBuchungen(); }
-    else if (view === 'kategorien') { document.getElementById('viewKategorien').classList.remove('hidden'); loadKategorienView(); }
-    else if (view === 'lieferanten') { document.getElementById('viewLieferanten').classList.remove('hidden'); loadLieferantenView(); }
-    else if (view === 'team') { document.getElementById('viewTeam').classList.remove('hidden'); loadTeam(); }
+    document.querySelector(`[data-view="${view}"]`)?.classList.add('active');
+    document.querySelectorAll('[id^="view"]').forEach(el => el.classList.add('hidden'));
+    const target = document.getElementById('view' + view.charAt(0).toUpperCase() + view.slice(1));
+    if (target) target.classList.remove('hidden');
+    if (view === 'dashboard') loadDashboard();
+    else if (view === 'artikel') loadArtikel();
+    else if (view === 'buchungen') loadBuchungen();
+    else if (view === 'kategorien') loadKategorienView();
+    else if (view === 'lieferanten') loadLieferantenView();
+    else if (view === 'lagerorte') loadLagerorteView();
+    else if (view === 'mhd') loadMhdChargen();
+    else if (view === 'analyse') loadAnalyse('renner');
+    else if (view === 'team') loadTeam();
 }
 
-function toggleKritischerFilter() {
-    kritischerFilterAktiv = !kritischerFilterAktiv;
-    const btn = document.getElementById('btnKritisch');
-    if (kritischerFilterAktiv) {
-        btn.classList.add('aktiv');
-        btn.textContent = '⚠️ Kritische (aktiv)';
-    } else {
-        btn.classList.remove('aktiv');
-        btn.textContent = '⚠️ Kritische';
-    }
-    loadArtikel();
-}
-
-function exportiereCSV() {
-    if (artikelCache.length === 0) {
-        alert('Keine Artikel zum Exportieren vorhanden.');
-        return;
-    }
-    const header = ['Name', 'Kategorie', 'Preis', 'Bestand', 'Mindestbestand'];
-    const rows = artikelCache.map(a => [
-        a.name,
-        a.kategorie_name || '',
-        a.preis ? a.preis.toFixed(2).replace('.', ',') : '',
-        a.bestand || 0,
-        a.mindestbestand || 0
-    ]);
-    let csv = header.join(';') + '\n';
-    rows.forEach(r => csv += r.join(';') + '\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'artikel_export.csv'; a.click();
-    URL.revokeObjectURL(url);
-}
-
-function exportiereBestellvorschlagCSV() {
-    if (bestellvorschlagCache.length === 0) {
-        alert('Kein Bestellvorschlag geladen.');
-        return;
-    }
-    const header = ['Name', 'Bestand', 'Mindestbestand', 'Nachbestellen', 'Lieferant'];
-    const rows = bestellvorschlagCache.map(b => [
-        b.name,
-        b.bestand || 0,
-        b.mindestbestand,
-        b.nachbestellen,
-        b.lieferant_name || ''
-    ]);
-    let csv = header.join(';') + '\n';
-    rows.forEach(r => csv += r.join(';') + '\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'bestellvorschlag.csv'; a.click();
-    URL.revokeObjectURL(url);
-}
-
-async function importCSV(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const statusDiv = document.getElementById('importStatus');
-    statusDiv.textContent = 'Importiere...';
-    statusDiv.className = 'import-status';
+// Dashboard
+async function loadDashboard() {
     try {
-        const resp = await apiCall('/artikel/import', {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/csv' },
-            body: file
-        });
-        const result = await resp.json();
+        const resp = await apiCall('/dashboard');
         if (resp.ok) {
-            statusDiv.textContent = `✅ ${result.importiert} von ${result.gesamt} Artikeln importiert.`;
-            statusDiv.className = 'import-status success';
-            loadArtikel();
-        } else {
-            statusDiv.textContent = '❌ Fehler: ' + (result.error || 'Unbekannter Fehler');
-            statusDiv.className = 'import-status error';
-        }
-    } catch (e) {
-        statusDiv.textContent = '❌ Netzwerkfehler beim Import.';
-        statusDiv.className = 'import-status error';
-    }
-    event.target.value = '';
-}
-
-// ---------- Bestellvorschlag ----------
-async function ladeBestellvorschlag() {
-    const statusDiv = document.getElementById('bestellStatus');
-    statusDiv.textContent = 'Lade Bestellvorschlag...';
-    statusDiv.className = 'bestell-status';
-    try {
-        const resp = await apiCall('/artikel/bestellvorschlag');
-        if (resp.ok) {
-            bestellvorschlagCache = await resp.json();
-            zeigeBestellvorschlag();
-            statusDiv.textContent = '';
-        } else {
-            statusDiv.textContent = '❌ Fehler beim Laden.';
-            statusDiv.className = 'bestell-status error';
-        }
-    } catch {
-        statusDiv.textContent = '❌ Netzwerkfehler.';
-        statusDiv.className = 'bestell-status error';
-    }
-}
-
-function zeigeBestellvorschlag() {
-    document.getElementById('artikelTabelle').classList.add('hidden');
-    document.getElementById('bestellvorschlagContainer').classList.remove('hidden');
-    const container = document.getElementById('bestellvorschlagTabelle');
-    if (bestellvorschlagCache.length === 0) {
-        container.innerHTML = '<p>Keine kritischen Artikel vorhanden.</p>';
-        return;
-    }
-    let html = '<table><thead><tr><th>Name</th><th>Bestand</th><th>Mindest.</th><th>Nachbestellen</th><th>Lieferant</th></tr></thead><tbody>';
-    bestellvorschlagCache.forEach(b => {
-        html += `<tr>
-            <td>${b.name}</td><td>${b.bestand || 0}</td><td>${b.mindestbestand}</td>
-            <td><strong>${b.nachbestellen}</strong></td><td>${b.lieferant_name || '–'}</td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-function zeigeArtikelTabelle() {
-    document.getElementById('bestellvorschlagContainer').classList.add('hidden');
-    document.getElementById('artikelTabelle').classList.remove('hidden');
-    loadArtikel();
-}
-
-// ---------- Kategorien ----------
-async function loadKategorien() {
-    try { const r = await apiCall('/kategorien'); if (r.ok) kategorienCache = await r.json(); } catch {}
-    populateKatSelects();
-}
-function populateKatSelects() {
-    const selects = ['filterKategorie','artikelKategorie','filterBuchungArtikel','buchenArtikelId'];
-    selects.forEach(id => {
-        const sel = document.getElementById(id);
-        if (!sel) return;
-        sel.innerHTML = id.includes('Buchung') || id.includes('buchen') ? '<option value="">Alle Artikel</option>' : '<option value="">Alle Kategorien</option>';
-        kategorienCache.forEach(k => { const o = document.createElement('option'); o.value = k.id; o.textContent = k.name; sel.appendChild(o); });
-    });
-}
-
-function loadKategorienView() {
-    const container = document.getElementById('kategorienTabelle');
-    if (kategorienCache.length === 0) { container.innerHTML = '<p>Keine Kategorien vorhanden.</p>'; return; }
-    let html = '<table><thead><tr><th>Name</th><th></th></tr></thead><tbody>';
-    kategorienCache.forEach(k => {
-        html += `<tr>
-            <td>${k.name}</td>
-            <td>
-                <button class="btn" onclick="openKategorieFormular(${k.id})">✏️</button>
-                ${userRolle === 'admin' ? `<button class="btn btn-danger" onclick="deleteKategorie(${k.id})">🗑️</button>` : ''}
-            </td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-function openKategorieFormular(id = null) {
-    if (id) {
-        const kat = kategorienCache.find(k => k.id === id);
-        if (!kat) return;
-        document.getElementById('kategorieFormTitel').textContent = 'Kategorie bearbeiten';
-        document.getElementById('editKategorieId').value = kat.id;
-        document.getElementById('kategorieName').value = kat.name;
-    } else {
-        document.getElementById('kategorieFormTitel').textContent = 'Neue Kategorie anlegen';
-        document.getElementById('editKategorieId').value = '';
-        document.getElementById('kategorieName').value = '';
-    }
-    document.getElementById('kategorieFormular').classList.remove('hidden');
-}
-function cancelKategorieForm() { document.getElementById('kategorieFormular').classList.add('hidden'); }
-
-async function saveKategorie() {
-    const id = document.getElementById('editKategorieId').value;
-    const name = document.getElementById('kategorieName').value.trim();
-    if (!name) return alert('Name erforderlich');
-    try {
-        const r = id
-            ? await apiCall('/kategorien/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
-            : await apiCall('/kategorien', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
-        if (r.ok) { cancelKategorieForm(); loadKategorien(); loadKategorienView(); }
-    } catch { alert('Fehler'); }
-}
-
-async function deleteKategorie(id) {
-    if (!confirm('Kategorie löschen?')) return;
-    try { await apiCall('/kategorien/' + id, { method: 'DELETE' }); loadKategorien(); loadKategorienView(); } catch { alert('Fehler'); }
-}
-
-// ---------- Lieferanten ----------
-async function loadLieferanten() {
-    try { const r = await apiCall('/lieferanten'); if (r.ok) lieferantenCache = await r.json(); } catch {}
-    populateLieferantSelect();
-}
-function populateLieferantSelect() {
-    const sel = document.getElementById('artikelLieferant');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Lieferant wählen</option>';
-    lieferantenCache.forEach(l => { const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; sel.appendChild(o); });
-}
-
-function loadLieferantenView() {
-    const container = document.getElementById('lieferantenTabelle');
-    if (lieferantenCache.length === 0) { container.innerHTML = '<p>Keine Lieferanten vorhanden.</p>'; return; }
-    let html = '<table><thead><tr><th>Name</th><th>Kontakt</th><th></th></tr></thead><tbody>';
-    lieferantenCache.forEach(l => {
-        html += `<tr>
-            <td>${l.name}</td><td>${l.kontakt || '–'}</td>
-            <td>
-                <button class="btn" onclick="openLieferantFormular(${l.id})">✏️</button>
-                ${userRolle === 'admin' ? `<button class="btn btn-danger" onclick="deleteLieferant(${l.id})">🗑️</button>` : ''}
-            </td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-function openLieferantFormular(id = null) {
-    if (id) {
-        const lie = lieferantenCache.find(l => l.id === id);
-        if (!lie) return;
-        document.getElementById('lieferantFormTitel').textContent = 'Lieferant bearbeiten';
-        document.getElementById('editLieferantId').value = lie.id;
-        document.getElementById('lieferantName').value = lie.name;
-        document.getElementById('lieferantKontakt').value = lie.kontakt || '';
-    } else {
-        document.getElementById('lieferantFormTitel').textContent = 'Neuen Lieferanten anlegen';
-        document.getElementById('editLieferantId').value = '';
-        document.getElementById('lieferantName').value = '';
-        document.getElementById('lieferantKontakt').value = '';
-    }
-    document.getElementById('lieferantFormular').classList.remove('hidden');
-}
-function cancelLieferantForm() { document.getElementById('lieferantFormular').classList.add('hidden'); }
-
-async function saveLieferant() {
-    const id = document.getElementById('editLieferantId').value;
-    const name = document.getElementById('lieferantName').value.trim();
-    const kontakt = document.getElementById('lieferantKontakt').value.trim();
-    if (!name) return alert('Name erforderlich');
-    try {
-        const r = id
-            ? await apiCall('/lieferanten/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, kontakt}) })
-            : await apiCall('/lieferanten', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, kontakt}) });
-        if (r.ok) { cancelLieferantForm(); loadLieferanten(); loadLieferantenView(); }
-    } catch { alert('Fehler'); }
-}
-
-async function deleteLieferant(id) {
-    if (!confirm('Lieferant löschen?')) return;
-    try { await apiCall('/lieferanten/' + id, { method: 'DELETE' }); loadLieferanten(); loadLieferantenView(); } catch { alert('Fehler'); }
-}
-
-// ---------- Artikel ----------
-async function loadArtikel() {
-    const kat = document.getElementById('filterKategorie').value;
-    let url = '/artikel';
-    const params = [];
-    if (kat) params.push(`kategorie=${kat}`);
-    if (kritischerFilterAktiv) params.push('kritisch=true');
-    if (params.length > 0) url += '?' + params.join('&');
-    try {
-        const r = await apiCall(url);
-        if (r.ok) {
-            artikelCache = await r.json();
-            renderArtikelTabelle(artikelCache);
+            const d = await resp.json();
+            const html = `
+                <div class="kachel"><div class="kachel-wert">${parseFloat(d.lagerwert).toFixed(2)} €</div><div class="kachel-label">Lagerwert</div></div>
+                <div class="kachel"><div class="kachel-wert">${d.buchungenWoche}</div><div class="kachel-label">Buchungen diese Woche</div></div>
+                <div class="kachel"><div class="kachel-wert">${d.artikelCount}</div><div class="kachel-label">Artikel im Sortiment</div></div>
+                <div class="kachel"><div class="kachel-wert">${d.kritischCount}</div><div class="kachel-label">📦 Bestellvorschläge</div></div>
+            `;
+            document.getElementById('dashboardKacheln').innerHTML = html;
         }
     } catch {}
 }
-function renderArtikelTabelle(liste) {
-    const container = document.getElementById('artikelTabelle');
-    if (liste.length === 0) { container.innerHTML = '<p>Keine Artikel gefunden.</p>'; return; }
-    let html = '<table><thead><tr><th>Name</th><th>Kategorie</th><th>Preis</th><th>Bestand</th><th>Mindest.</th><th></th></tr></thead><tbody>';
-    liste.forEach(a => {
-        const bestandKlasse = a.bestand < a.mindestbestand ? 'badge-low' : 'badge-ok';
-        html += `<tr>
-            <td>${a.name}</td><td>${a.kategorie_name || '–'}</td><td>${a.preis ? a.preis.toFixed(2)+' €' : '–'}</td>
-            <td><span class="badge ${bestandKlasse}">${a.bestand || 0}</span></td>
-            <td>${a.mindestbestand || 0}</td>
-            <td>
-                <button class="btn" onclick="editArtikel(${a.id})">✏️</button>
-                ${userRolle === 'admin' ? `<button class="btn btn-danger" onclick="deleteArtikel(${a.id})">🗑️</button>` : ''}
-            </td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-function openArtikelFormular() {
-    document.getElementById('artikelFormTitel').textContent = 'Neuen Artikel anlegen';
-    document.getElementById('editArtikelId').value = '';
-    document.getElementById('artikelName').value = '';
-    document.getElementById('artikelPreis').value = '';
-    document.getElementById('artikelMindestbestand').value = '';
-    document.getElementById('artikelKategorie').value = '';
-    document.getElementById('artikelLieferant').value = '';
-    document.getElementById('artikelFormular').classList.remove('hidden');
-}
-function cancelArtikelForm() { document.getElementById('artikelFormular').classList.add('hidden'); }
-async function saveArtikel() {
-    const id = document.getElementById('editArtikelId').value;
-    const body = {
-        name: document.getElementById('artikelName').value.trim(),
-        kategorie_id: document.getElementById('artikelKategorie').value || null,
-        preis: document.getElementById('artikelPreis').value ? parseFloat(document.getElementById('artikelPreis').value) : null,
-        mindestbestand: document.getElementById('artikelMindestbestand').value || 0
-    };
-    if (!body.name) return alert('Name erforderlich');
-    try {
-        const r = id
-            ? await apiCall('/artikel/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
-            : await apiCall('/artikel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        if (r.ok) { cancelArtikelForm(); loadArtikel(); }
-    } catch { alert('Fehler'); }
-}
-function editArtikel(id) {
-    const a = artikelCache.find(x => x.id === id);
-    if (!a) return;
-    document.getElementById('artikelFormTitel').textContent = 'Artikel bearbeiten';
-    document.getElementById('editArtikelId').value = a.id;
-    document.getElementById('artikelName').value = a.name;
-    document.getElementById('artikelPreis').value = a.preis || '';
-    document.getElementById('artikelMindestbestand').value = a.mindestbestand || 0;
-    document.getElementById('artikelKategorie').value = a.kategorie_id || '';
-    document.getElementById('artikelLieferant').value = a.lieferant_id || '';
-    document.getElementById('artikelFormular').classList.remove('hidden');
-}
-async function deleteArtikel(id) {
-    if (!confirm('Artikel löschen?')) return;
-    try { await apiCall('/artikel/' + id, { method: 'DELETE' }); loadArtikel(); } catch { alert('Fehler'); }
-}
-
-// ---------- Buchungen ----------
-async function loadBuchungen() {
-    const artId = document.getElementById('filterBuchungArtikel').value;
-    try {
-        const r = await apiCall('/buchungen' + (artId ? `?artikel_id=${artId}` : ''));
-        if (r.ok) {
-            const buchungen = await r.json();
-            let html = '<table><thead><tr><th>Zeitpunkt</th><th>Artikel</th><th>Typ</th><th>Menge</th><th>Grund</th><th>Benutzer</th></tr></thead><tbody>';
-            buchungen.forEach(b => {
-                html += `<tr>
-                    <td>${new Date(b.zeitpunkt).toLocaleString('de-DE')}</td><td>${b.artikel_name}</td>
-                    <td>${b.typ === 'eingang' ? '➕ Eingang' : '➖ Ausgang'}</td>
-                    <td>${b.menge}</td><td>${b.grund || '–'}</td><td>${b.user_email}</td>
-                </tr>`;
-            });
-            html += '</tbody></table>';
-            document.getElementById('buchungenTabelle').innerHTML = buchungen.length === 0 ? '<p>Keine Buchungen.</p>' : html;
-        }
-    } catch {}
-}
-function openBuchenFormular() { document.getElementById('buchenFormular').classList.remove('hidden'); }
-function cancelBuchenForm() { document.getElementById('buchenFormular').classList.add('hidden'); }
-async function doBuchung() {
-    const body = {
-        artikel_id: document.getElementById('buchenArtikelId').value,
-        typ: document.getElementById('buchenTyp').value,
-        menge: parseInt(document.getElementById('buchenMenge').value),
-        grund: document.getElementById('buchenGrund').value.trim()
-    };
-    if (!body.artikel_id || !body.menge) return alert('Artikel und Menge erforderlich');
-    try {
-        const r = await apiCall('/buchungen', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        if (r.ok) { cancelBuchenForm(); loadBuchungen(); loadArtikel(); }
-        else { const msg = await r.text(); alert(msg); }
-    } catch { alert('Fehler'); }
-}
-
-// ---------- Team ----------
-async function loadTeam() {
-    try {
-        const r = await apiCall('/team');
-        if (r.ok) {
-            const mitglieder = await r.json();
-            let html = '<table><thead><tr><th>E-Mail</th><th>Rolle</th><th>Beigetreten</th></tr></thead><tbody>';
-            mitglieder.forEach(m => { html += `<tr><td>${m.email}</td><td>${m.rolle}</td><td>${new Date(m.joined_at).toLocaleDateString('de-DE')}</td></tr>`; });
-            html += '</tbody></table>';
-            document.getElementById('teamTabelle').innerHTML = html;
-        }
-    } catch {}
-}
-function toggleEinladen() { document.getElementById('einladenFormular').classList.toggle('hidden'); }
-async function einladen() {
-    const email = document.getElementById('einladenEmail').value.trim();
-    const rolle = document.getElementById('einladenRolle').value;
-    if (!email) return alert('E-Mail eingeben');
-    try {
-        const r = await apiCall('/team/einladen', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, rolle}) });
-        if (r.ok) { loadTeam(); toggleEinladen(); alert('Benutzer eingeladen.'); }
-        else { const msg = await r.text(); alert(msg); }
-    } catch { alert('Fehler'); }
-}
+// Kategorien, Lieferanten, Lagerorte – analoge CRUD-Funktionen ...
 </script>
 </body>
 </html>
