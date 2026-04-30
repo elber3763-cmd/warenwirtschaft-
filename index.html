@@ -113,9 +113,11 @@
         <div class="nav-bar">
             <button class="nav-btn active" data-view="artikel" onclick="switchView('artikel')">📋 Artikel</button>
             <button class="nav-btn" data-view="buchungen" onclick="switchView('buchungen')">📜 Buchungen</button>
+            <button class="nav-btn" data-view="kategorien" onclick="switchView('kategorien')">📂 Kategorien</button>
             <button class="nav-btn" data-view="team" onclick="switchView('team')">👥 Team</button>
         </div>
 
+        <!-- Artikel-View (unverändert) -->
         <div id="viewArtikel">
             <div class="row" style="margin-bottom:20px;">
                 <select id="filterKategorie" onchange="loadArtikel()">
@@ -141,6 +143,7 @@
             </div>
         </div>
 
+        <!-- Buchungen-View (unverändert) -->
         <div id="viewBuchungen" class="hidden">
             <div class="row" style="margin-bottom:20px;">
                 <select id="filterBuchungArtikel" onchange="loadBuchungen()">
@@ -168,6 +171,25 @@
             </div>
         </div>
 
+        <!-- Kategorien-View (NEU) -->
+        <div id="viewKategorien" class="hidden">
+            <div class="row" style="margin-bottom:20px;">
+                <button class="btn btn-primary" onclick="openKategorieFormular()">➕ Neue Kategorie</button>
+            </div>
+            <div id="kategorienTabelle"></div>
+
+            <div id="kategorieFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
+                <h3 id="kategorieFormTitel">Neue Kategorie anlegen</h3>
+                <input type="hidden" id="editKategorieId">
+                <input type="text" id="kategorieName" placeholder="Kategorie-Name">
+                <div class="row">
+                    <button class="btn btn-primary" onclick="saveKategorie()">Speichern</button>
+                    <button class="btn" onclick="cancelKategorieForm()">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team-View (unverändert) -->
         <div id="viewTeam" class="hidden">
             <h3>Team-Mitglieder</h3>
             <div id="teamTabelle"></div>
@@ -263,13 +285,15 @@ function switchView(view) {
     document.querySelector(`[data-view="${view}"]`).classList.add('active');
     document.getElementById('viewArtikel').classList.add('hidden');
     document.getElementById('viewBuchungen').classList.add('hidden');
+    document.getElementById('viewKategorien').classList.add('hidden');
     document.getElementById('viewTeam').classList.add('hidden');
     if (view === 'artikel') { document.getElementById('viewArtikel').classList.remove('hidden'); loadArtikel(); }
     else if (view === 'buchungen') { document.getElementById('viewBuchungen').classList.remove('hidden'); loadBuchungen(); }
+    else if (view === 'kategorien') { document.getElementById('viewKategorien').classList.remove('hidden'); loadKategorienView(); }
     else if (view === 'team') { document.getElementById('viewTeam').classList.remove('hidden'); loadTeam(); }
 }
 
-// Kategorien
+// Kategorien (global für Dropdowns)
 async function loadKategorien() {
     try { const r = await apiCall('/kategorien'); if (r.ok) kategorienCache = await r.json(); } catch {}
     populateKatSelects();
@@ -284,7 +308,58 @@ function populateKatSelects() {
     });
 }
 
-// Artikel
+// ---- Kategorien-View (NEU) ----
+function loadKategorienView() {
+    const container = document.getElementById('kategorienTabelle');
+    if (kategorienCache.length === 0) { container.innerHTML = '<p>Keine Kategorien vorhanden.</p>'; return; }
+    let html = '<table><thead><tr><th>Name</th><th></th></tr></thead><tbody>';
+    kategorienCache.forEach(k => {
+        html += `<tr>
+            <td>${k.name}</td>
+            <td>
+                <button class="btn" onclick="openKategorieFormular(${k.id})">✏️</button>
+                ${userRolle === 'admin' ? `<button class="btn btn-danger" onclick="deleteKategorie(${k.id})">🗑️</button>` : ''}
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function openKategorieFormular(id = null) {
+    if (id) {
+        const kat = kategorienCache.find(k => k.id === id);
+        if (!kat) return;
+        document.getElementById('kategorieFormTitel').textContent = 'Kategorie bearbeiten';
+        document.getElementById('editKategorieId').value = kat.id;
+        document.getElementById('kategorieName').value = kat.name;
+    } else {
+        document.getElementById('kategorieFormTitel').textContent = 'Neue Kategorie anlegen';
+        document.getElementById('editKategorieId').value = '';
+        document.getElementById('kategorieName').value = '';
+    }
+    document.getElementById('kategorieFormular').classList.remove('hidden');
+}
+function cancelKategorieForm() { document.getElementById('kategorieFormular').classList.add('hidden'); }
+
+async function saveKategorie() {
+    const id = document.getElementById('editKategorieId').value;
+    const name = document.getElementById('kategorieName').value.trim();
+    if (!name) return alert('Name erforderlich');
+    try {
+        const r = id
+            ? await apiCall('/kategorien/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) })
+            : await apiCall('/kategorien', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name}) });
+        if (r.ok) { cancelKategorieForm(); loadKategorien(); loadKategorienView(); }
+    } catch { alert('Fehler'); }
+}
+
+async function deleteKategorie(id) {
+    if (!confirm('Kategorie löschen?')) return;
+    try { await apiCall('/kategorien/' + id, { method: 'DELETE' }); loadKategorien(); loadKategorienView(); } catch { alert('Fehler'); }
+}
+
+// Artikel (unverändert)
 async function loadArtikel() {
     const kat = document.getElementById('filterKategorie').value;
     try {
@@ -314,7 +389,6 @@ function renderArtikelTabelle(liste) {
     html += '</tbody></table>';
     container.innerHTML = html;
 }
-
 function openArtikelFormular() {
     document.getElementById('artikelFormTitel').textContent = 'Neuen Artikel anlegen';
     document.getElementById('editArtikelId').value = '';
@@ -357,7 +431,7 @@ async function deleteArtikel(id) {
     try { await apiCall('/artikel/' + id, { method: 'DELETE' }); loadArtikel(); } catch { alert('Fehler'); }
 }
 
-// Buchungen
+// Buchungen (unverändert)
 async function loadBuchungen() {
     const artId = document.getElementById('filterBuchungArtikel').value;
     try {
@@ -394,7 +468,7 @@ async function doBuchung() {
     } catch { alert('Fehler'); }
 }
 
-// Team
+// Team (unverändert)
 async function loadTeam() {
     try {
         const r = await apiCall('/team');
