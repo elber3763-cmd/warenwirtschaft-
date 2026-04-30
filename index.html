@@ -82,6 +82,9 @@
         .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
         .badge-low { background: rgba(255,138,128,0.2); color: #e53935; }
         .badge-ok { background: rgba(76,175,80,0.15); color: #2e7d32; }
+        .import-btn { background: transparent; border: 2px solid #1976d2; color: #1976d2; }
+        body.dark-mode .import-btn { border-color: #64b5f6; color: #64b5f6; }
+        .import-btn:hover { background: rgba(25,118,210,0.1); }
         .druck-btn { background: transparent; border: 2px solid #999; color: #666; }
         body.dark-mode .druck-btn { color: #aaa; border-color: #aaa; }
         .druck-btn:hover { background: #eee; }
@@ -94,14 +97,16 @@
         body.dark-mode .csv-btn { border-color: #66bb6a; color: #66bb6a; }
         .csv-btn:hover { background: rgba(76,175,80,0.1); }
 
+        .import-status { margin-top: 8px; font-size: 13px; }
+
         /* Druck-Stile */
         @media print {
             body { background: white !important; padding: 0; margin: 0; }
             .container { box-shadow: none; border: none; padding: 20px; backdrop-filter: none; background: white !important; max-width: 100%; }
-            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn, .csv-btn,
+            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn, .csv-btn, .import-btn,
             .modal-overlay, .tabs, .manage-kat-btn, .logout-btn, .dark-mode-btn, .password-btn, .edit-btn, .auswahl-checkbox,
             .artikel-actions, .liste-actions, .modal, .close-modal, .btn-danger, .btn-selection, .btn-aktivitaeten,
-            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .lieferantFormular, .einladenFormular {
+            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .lieferantFormular, .einladenFormular, .import-status {
                 display: none !important;
             }
             .artikel-item, .liste-row { border-bottom: 1px solid #ccc; padding: 8px 0; }
@@ -155,9 +160,12 @@
                 </select>
                 <button id="btnKritisch" class="btn kritisch-btn" onclick="toggleKritischerFilter()">⚠️ Kritische</button>
                 <button class="btn csv-btn" onclick="exportiereCSV()">📥 CSV Export</button>
+                <button class="btn import-btn" onclick="document.getElementById('importFileInput').click()">📤 CSV Import</button>
+                <input type="file" id="importFileInput" accept=".csv" class="hidden" onchange="importCSV(event)">
                 <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
                 <button class="btn druck-btn" onclick="window.print()">🖨️ Drucken</button>
             </div>
+            <div id="importStatus" class="import-status"></div>
             <div id="artikelTabelle"></div>
 
             <div id="artikelFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
@@ -225,7 +233,7 @@
             </div>
         </div>
 
-        <!-- Lieferanten-View (NEU) -->
+        <!-- Lieferanten-View -->
         <div id="viewLieferanten" class="hidden">
             <div class="row" style="margin-bottom:20px;">
                 <button class="btn btn-primary" onclick="openLieferantFormular()">➕ Neuer Lieferant</button>
@@ -393,6 +401,40 @@ function exportiereCSV() {
     URL.revokeObjectURL(url);
 }
 
+// CSV-Import
+async function importCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const statusDiv = document.getElementById('importStatus');
+    statusDiv.textContent = 'Importiere...';
+    statusDiv.className = 'import-status';
+
+    try {
+        const resp = await apiCall('/artikel/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/csv' },
+            body: file
+        });
+
+        const result = await resp.json();
+        if (resp.ok) {
+            statusDiv.textContent = `✅ ${result.importiert} von ${result.gesamt} Artikeln importiert.`;
+            statusDiv.className = 'import-status success';
+            loadArtikel();
+        } else {
+            statusDiv.textContent = '❌ Fehler: ' + (result.error || 'Unbekannter Fehler');
+            statusDiv.className = 'import-status error';
+        }
+    } catch (e) {
+        statusDiv.textContent = '❌ Netzwerkfehler beim Import.';
+        statusDiv.className = 'import-status error';
+    }
+
+    // Input leeren, damit dieselbe Datei erneut ausgewählt werden kann
+    event.target.value = '';
+}
+
 // ---------- Kategorien ----------
 async function loadKategorien() {
     try { const r = await apiCall('/kategorien'); if (r.ok) kategorienCache = await r.json(); } catch {}
@@ -458,7 +500,7 @@ async function deleteKategorie(id) {
     try { await apiCall('/kategorien/' + id, { method: 'DELETE' }); loadKategorien(); loadKategorienView(); } catch { alert('Fehler'); }
 }
 
-// ---------- Lieferanten (NEU) ----------
+// ---------- Lieferanten ----------
 async function loadLieferanten() {
     try { const r = await apiCall('/lieferanten'); if (r.ok) lieferantenCache = await r.json(); } catch {}
     populateLieferantSelect();
