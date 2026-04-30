@@ -82,6 +82,23 @@
         .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
         .badge-low { background: rgba(255,138,128,0.2); color: #e53935; }
         .badge-ok { background: rgba(76,175,80,0.15); color: #2e7d32; }
+        .import-btn { background: transparent; border: 2px solid #1976d2; color: #1976d2; }
+        body.dark-mode .import-btn { border-color: #64b5f6; color: #64b5f6; }
+        .import-btn:hover { background: rgba(25,118,210,0.1); }
+        .bestell-btn { background: transparent; border: 2px solid #f57c00; color: #f57c00; }
+        body.dark-mode .bestell-btn { border-color: #ffb74d; color: #ffb74d; }
+        .bestell-btn:hover { background: rgba(245,124,0,0.1); }
+        .druck-btn { background: transparent; border: 2px solid #999; color: #666; }
+        body.dark-mode .druck-btn { color: #aaa; border-color: #aaa; }
+        .druck-btn:hover { background: #eee; }
+        .kritisch-btn { background: transparent; border: 2px solid #e53935; color: #e53935; }
+        body.dark-mode .kritisch-btn { border-color: #ff8a80; color: #ff8a80; }
+        .kritisch-btn:hover { background: rgba(255,138,128,0.15); }
+        .kritisch-btn.aktiv { background: #e53935; color: white; }
+        body.dark-mode .kritisch-btn.aktiv { background: #ff8a80; color: #1e1e2f; }
+        .csv-btn { background: transparent; border: 2px solid #2e7d32; color: #2e7d32; }
+        body.dark-mode .csv-btn { border-color: #66bb6a; color: #66bb6a; }
+        .csv-btn:hover { background: rgba(76,175,80,0.1); }
         .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .kachel {
             background: rgba(248,249,255,0.8); backdrop-filter: blur(12px);
@@ -176,6 +193,7 @@
                 <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
                 <button class="btn druck-btn" onclick="window.print()">🖨️ Drucken</button>
             </div>
+            <div id="importStatus" class="import-status" style="margin-top:8px;font-size:13px;"></div>
             <div id="artikelTabelle"></div>
 
             <div id="bestellvorschlagContainer" class="hidden">
@@ -223,10 +241,7 @@
                 <select id="buchenTyp"><option value="eingang">Wareneingang (+)</option><option value="ausgang">Warenausgang (−)</option></select>
                 <input type="number" id="buchenMenge" placeholder="Menge" min="1">
                 <input type="text" id="buchenGrund" placeholder="Grund (optional)">
-                <div class="row">
-                    <button class="btn btn-primary" onclick="doBuchung()">Buchen</button>
-                    <button class="btn" onclick="cancelBuchenForm()">Abbrechen</button>
-                </div>
+                <div class="row"><button class="btn btn-primary" onclick="doBuchung()">Buchen</button><button class="btn" onclick="cancelBuchenForm()">Abbrechen</button></div>
             </div>
         </div>
 
@@ -376,6 +391,14 @@ function switchView(view) {
     else if (view === 'team') loadTeam();
 }
 
+function toggleKritischerFilter() {
+    kritischerFilterAktiv = !kritischerFilterAktiv;
+    const btn = document.getElementById('btnKritisch');
+    if (kritischerFilterAktiv) { btn.classList.add('aktiv'); btn.textContent = '⚠️ Kritische (aktiv)'; }
+    else { btn.classList.remove('aktiv'); btn.textContent = '⚠️ Kritische'; }
+    loadArtikel();
+}
+
 // Dashboard
 async function loadDashboard() {
     try {
@@ -397,7 +420,7 @@ async function loadKategorien() { try { const r = await apiCall('/kategorien'); 
 function populateKatSelects() {
     ['filterKategorie','artikelKategorie','filterBuchungArtikel','buchenArtikelId','mhdArtikelId'].forEach(id => {
         const sel = document.getElementById(id); if (!sel) return;
-        sel.innerHTML = '<option value="">Alle</option>';
+        sel.innerHTML = (id==='filterKategorie'||id==='artikelKategorie'?'<option value="">Alle Kategorien</option>':'<option value="">Alle Artikel</option>');
         kategorienCache.forEach(k => { const o = document.createElement('option'); o.value = k.id; o.textContent = k.name; sel.appendChild(o); });
     });
 }
@@ -471,7 +494,7 @@ async function saveLagerort() {
 async function deleteLagerort(id) { if (confirm('Löschen?')) { await apiCall('/lagerorte/'+id, {method:'DELETE'}); loadLagerorte(); loadLagerorteView(); } }
 
 // MHD
-async function loadMhdChargen() { try { const r = await apiCall('/mhd'); if (r.ok) { const data = await r.json(); renderMhd(data); } } catch {} }
+async function loadMhdChargen() { try { const r = await apiCall('/mhd'); if (r.ok) renderMhd(await r.json()); } catch {} }
 async function loadMhdFaellig(tage) { try { const r = await apiCall('/mhd/faellig?tage='+tage); if (r.ok) renderMhd(await r.json()); } catch {} }
 function renderMhd(data) {
     const c = document.getElementById('mhdTabelle');
@@ -498,8 +521,163 @@ async function loadAnalyse(typ) {
     } catch {}
 }
 
-// Artikel (gekürzt – alle anderen Funktionen aus den vorherigen Versionen sind weiterhin enthalten, z. B. loadArtikel, renderArtikelTabelle, openArtikelFormular, saveArtikel, editArtikel, deleteArtikel, loadBuchungen, doBuchung, CSV-Export/Import, Bestellvorschlag)
-// ... (hier aus Platzgründen nicht erneut abgedruckt, aber im finalen Code vollständig vorhanden)
+// Artikel
+async function loadArtikelCache() { try { const r = await apiCall('/artikel'); if (r.ok) artikelCache = await r.json(); } catch {} }
+async function loadArtikel() {
+    const kat = document.getElementById('filterKategorie').value;
+    let url = '/artikel';
+    const params = [];
+    if (kat) params.push(`kategorie=${kat}`);
+    if (kritischerFilterAktiv) params.push('kritisch=true');
+    if (params.length > 0) url += '?' + params.join('&');
+    try { const r = await apiCall(url); if (r.ok) { artikelCache = await r.json(); renderArtikelTabelle(artikelCache); } } catch {}
+}
+function renderArtikelTabelle(liste) {
+    const c = document.getElementById('artikelTabelle');
+    if (liste.length === 0) { c.innerHTML = '<p>Keine Artikel.</p>'; return; }
+    c.innerHTML = '<table><tr><th>Name</th><th>Kategorie</th><th>Preis</th><th>Bestand</th><th>Mindest.</th><th></th></tr>' + liste.map(a => `<tr><td>${a.name}</td><td>${a.kategorie_name||'–'}</td><td>${a.preis?a.preis.toFixed(2)+' €':'–'}</td><td><span class="badge ${a.bestand<a.mindestbestand?'badge-low':'badge-ok'}">${a.bestand||0}</span></td><td>${a.mindestbestand||0}</td><td><button class="btn" onclick="editArtikel(${a.id})">✏️</button>${userRolle==='admin'?`<button class="btn btn-danger" onclick="deleteArtikel(${a.id})">🗑️</button>`:''}</td></tr>`).join('') + '</table>';
+}
+function openArtikelFormular() {
+    document.getElementById('artikelFormTitel').textContent = 'Neuen Artikel anlegen';
+    document.getElementById('editArtikelId').value = '';
+    ['artikelName','artikelEinheit','artikelWarengruppe','artikelPreis','artikelEkPreis','artikelMindestbestand','artikelMaxBestand','artikelKategorie','artikelLieferant'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('artikelMhdPflichtig').checked = false;
+    document.getElementById('artikelFormular').classList.remove('hidden');
+}
+function cancelArtikelForm() { document.getElementById('artikelFormular').classList.add('hidden'); }
+async function saveArtikel() {
+    const id = document.getElementById('editArtikelId').value;
+    const body = {
+        name: document.getElementById('artikelName').value.trim(),
+        kategorie_id: document.getElementById('artikelKategorie').value || null,
+        lieferant_id: document.getElementById('artikelLieferant').value || null,
+        einheit: document.getElementById('artikelEinheit').value.trim(),
+        warengruppe: document.getElementById('artikelWarengruppe').value.trim(),
+        preis: document.getElementById('artikelPreis').value ? parseFloat(document.getElementById('artikelPreis').value) : null,
+        ek_preis: document.getElementById('artikelEkPreis').value ? parseFloat(document.getElementById('artikelEkPreis').value) : null,
+        mindestbestand: parseInt(document.getElementById('artikelMindestbestand').value) || 0,
+        max_bestand: parseInt(document.getElementById('artikelMaxBestand').value) || 0,
+        mhd_pflichtig: document.getElementById('artikelMhdPflichtig').checked ? 1 : 0
+    };
+    if (!body.name) return alert('Name erforderlich');
+    const r = id ? await apiCall('/artikel/'+id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}) : await apiCall('/artikel', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if (r.ok) { cancelArtikelForm(); loadArtikel(); loadArtikelCache(); }
+}
+function editArtikel(id) {
+    const a = artikelCache.find(x => x.id === id); if (!a) return;
+    document.getElementById('artikelFormTitel').textContent = 'Artikel bearbeiten';
+    document.getElementById('editArtikelId').value = a.id;
+    document.getElementById('artikelName').value = a.name || '';
+    document.getElementById('artikelEinheit').value = a.einheit || '';
+    document.getElementById('artikelWarengruppe').value = a.warengruppe || '';
+    document.getElementById('artikelPreis').value = a.preis || '';
+    document.getElementById('artikelEkPreis').value = a.ek_preis || '';
+    document.getElementById('artikelMindestbestand').value = a.mindestbestand || 0;
+    document.getElementById('artikelMaxBestand').value = a.max_bestand || 0;
+    document.getElementById('artikelKategorie').value = a.kategorie_id || '';
+    document.getElementById('artikelLieferant').value = a.lieferant_id || '';
+    document.getElementById('artikelMhdPflichtig').checked = a.mhd_pflichtig === 1;
+    document.getElementById('artikelFormular').classList.remove('hidden');
+}
+async function deleteArtikel(id) { if (confirm('Löschen?')) { await apiCall('/artikel/'+id, {method:'DELETE'}); loadArtikel(); loadArtikelCache(); } }
+
+// Buchungen
+async function loadBuchungen() {
+    const artId = document.getElementById('filterBuchungArtikel').value;
+    try {
+        const r = await apiCall('/buchungen' + (artId ? `?artikel_id=${artId}` : ''));
+        if (r.ok) {
+            const data = await r.json();
+            document.getElementById('buchungenTabelle').innerHTML = data.length ? '<table><tr><th>Zeitpunkt</th><th>Artikel</th><th>Typ</th><th>Menge</th><th>Grund</th><th>Benutzer</th></tr>' + data.map(b => `<tr><td>${new Date(b.zeitpunkt).toLocaleString('de-DE')}</td><td>${b.artikel_name}</td><td>${b.typ==='eingang'?'➕':'➖'} ${b.typ}</td><td>${b.menge}</td><td>${b.grund||'–'}</td><td>${b.user_email}</td></tr>`).join('') + '</table>' : '<p>Keine Buchungen.</p>';
+        }
+    } catch {}
+}
+function openBuchenFormular() { document.getElementById('buchenFormular').classList.remove('hidden'); }
+function cancelBuchenForm() { document.getElementById('buchenFormular').classList.add('hidden'); }
+async function doBuchung() {
+    const body = { artikel_id: document.getElementById('buchenArtikelId').value, typ: document.getElementById('buchenTyp').value, menge: parseInt(document.getElementById('buchenMenge').value), grund: document.getElementById('buchenGrund').value.trim() };
+    if (!body.artikel_id || !body.menge) return alert('Artikel und Menge erforderlich');
+    const r = await apiCall('/buchungen', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if (r.ok) { cancelBuchenForm(); loadBuchungen(); loadArtikel(); loadArtikelCache(); }
+    else { const msg = await r.text(); alert(msg); }
+}
+
+// CSV-Export
+function exportiereCSV() {
+    if (artikelCache.length === 0) { alert('Keine Artikel.'); return; }
+    const header = ['Name','Kategorie','Preis','Bestand','Mindestbestand'];
+    const rows = artikelCache.map(a => [a.name, a.kategorie_name||'', a.preis?a.preis.toFixed(2):'', a.bestand||0, a.mindestbestand||0]);
+    let csv = header.join(';') + '\n' + rows.map(r => r.join(';')).join('\n');
+    downloadBlob(csv, 'artikel_export.csv', 'text/csv');
+}
+function exportiereBestellvorschlagCSV() {
+    if (bestellvorschlagCache.length === 0) { alert('Kein Bestellvorschlag.'); return; }
+    const header = ['Name','Bestand','Mindestbestand','Nachbestellen','Lieferant'];
+    const rows = bestellvorschlagCache.map(b => [b.name, b.bestand||0, b.mindestbestand, b.nachbestellen, b.lieferant_name||'']);
+    let csv = header.join(';') + '\n' + rows.map(r => r.join(';')).join('\n');
+    downloadBlob(csv, 'bestellvorschlag.csv', 'text/csv');
+}
+function downloadBlob(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType + ';charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+}
+
+// CSV-Import
+async function importCSV(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const statusDiv = document.getElementById('importStatus');
+    statusDiv.textContent = 'Importiere...';
+    try {
+        const resp = await apiCall('/artikel/import', { method: 'POST', headers: {'Content-Type':'text/csv'}, body: file });
+        const result = await resp.json();
+        if (resp.ok) { statusDiv.textContent = `✅ ${result.importiert} von ${result.gesamt} Artikeln importiert.`; loadArtikel(); loadArtikelCache(); }
+        else { statusDiv.textContent = '❌ Fehler: ' + (result.error || 'Unbekannt'); }
+    } catch (e) { statusDiv.textContent = '❌ Netzwerkfehler.'; }
+    event.target.value = '';
+}
+
+// Bestellvorschlag
+async function ladeBestellvorschlag() {
+    try {
+        const resp = await apiCall('/artikel/bestellvorschlag');
+        if (resp.ok) { bestellvorschlagCache = await resp.json(); zeigeBestellvorschlag(); }
+    } catch {}
+}
+function zeigeBestellvorschlag() {
+    document.getElementById('artikelTabelle').classList.add('hidden');
+    document.getElementById('bestellvorschlagContainer').classList.remove('hidden');
+    const c = document.getElementById('bestellvorschlagTabelle');
+    c.innerHTML = bestellvorschlagCache.length ? '<table><tr><th>Name</th><th>Bestand</th><th>Mindest.</th><th>Nachbest.</th><th>Lieferant</th></tr>' + bestellvorschlagCache.map(b => `<tr><td>${b.name}</td><td>${b.bestand||0}</td><td>${b.mindestbestand}</td><td><strong>${b.nachbestellen}</strong></td><td>${b.lieferant_name||'–'}</td></tr>`).join('') + '</table>' : '<p>Keine kritischen Artikel.</p>';
+}
+function zeigeArtikelTabelle() {
+    document.getElementById('bestellvorschlagContainer').classList.add('hidden');
+    document.getElementById('artikelTabelle').classList.remove('hidden');
+    loadArtikel();
+}
+
+// Team
+async function loadTeam() {
+    try {
+        const r = await apiCall('/team');
+        if (r.ok) {
+            const data = await r.json();
+            document.getElementById('teamTabelle').innerHTML = '<table><tr><th>E-Mail</th><th>Rolle</th><th>Beigetreten</th></tr>' + data.map(m => `<tr><td>${m.email}</td><td>${m.rolle}</td><td>${new Date(m.joined_at).toLocaleDateString('de-DE')}</td></tr>`).join('') + '</table>';
+        }
+    } catch {}
+}
+function toggleEinladen() { document.getElementById('einladenFormular').classList.toggle('hidden'); }
+async function einladen() {
+    const email = document.getElementById('einladenEmail').value.trim();
+    const rolle = document.getElementById('einladenRolle').value;
+    if (!email) return alert('E-Mail eingeben');
+    try {
+        const r = await apiCall('/team/einladen', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email, rolle})});
+        if (r.ok) { loadTeam(); toggleEinladen(); alert('Benutzer eingeladen.'); }
+        else { const msg = await r.text(); alert(msg); }
+    } catch { alert('Fehler'); }
+}
 </script>
 </body>
 </html>
