@@ -85,12 +85,17 @@
         .druck-btn { background: transparent; border: 2px solid #999; color: #666; }
         body.dark-mode .druck-btn { color: #aaa; border-color: #aaa; }
         .druck-btn:hover { background: #eee; }
+        .kritisch-btn { background: transparent; border: 2px solid #e53935; color: #e53935; }
+        body.dark-mode .kritisch-btn { border-color: #ff8a80; color: #ff8a80; }
+        .kritisch-btn:hover { background: rgba(255,138,128,0.15); }
+        .kritisch-btn.aktiv { background: #e53935; color: white; }
+        body.dark-mode .kritisch-btn.aktiv { background: #ff8a80; color: #1e1e2f; }
 
         /* Druck-Stile */
         @media print {
             body { background: white !important; padding: 0; margin: 0; }
             .container { box-shadow: none; border: none; padding: 20px; backdrop-filter: none; background: white !important; max-width: 100%; }
-            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn,
+            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn,
             .modal-overlay, .tabs, .manage-kat-btn, .logout-btn, .dark-mode-btn, .password-btn, .edit-btn, .auswahl-checkbox,
             .artikel-actions, .liste-actions, .modal, .close-modal, .btn-danger, .btn-selection, .btn-aktivitaeten,
             .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .einladenFormular {
@@ -144,6 +149,7 @@
                 <select id="filterKategorie" onchange="loadArtikel()">
                     <option value="">Alle Kategorien</option>
                 </select>
+                <button id="btnKritisch" class="btn kritisch-btn" onclick="toggleKritischerFilter()">⚠️ Kritische</button>
                 <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
                 <button class="btn druck-btn" onclick="window.print()">🖨️ Drucken</button>
             </div>
@@ -235,6 +241,7 @@
 const API = 'https://warenwirtschaft-api.elber3763.workers.dev/api';
 let userRolle = 'user';
 let activeView = 'artikel';
+let kritischerFilterAktiv = false;
 let kategorienCache = [];
 let artikelCache = [];
 
@@ -315,6 +322,20 @@ function switchView(view) {
     else if (view === 'team') { document.getElementById('viewTeam').classList.remove('hidden'); loadTeam(); }
 }
 
+// Kritischer Filter
+function toggleKritischerFilter() {
+    kritischerFilterAktiv = !kritischerFilterAktiv;
+    const btn = document.getElementById('btnKritisch');
+    if (kritischerFilterAktiv) {
+        btn.classList.add('aktiv');
+        btn.textContent = '⚠️ Kritische (aktiv)';
+    } else {
+        btn.classList.remove('aktiv');
+        btn.textContent = '⚠️ Kritische';
+    }
+    loadArtikel();
+}
+
 async function loadKategorien() {
     try { const r = await apiCall('/kategorien'); if (r.ok) kategorienCache = await r.json(); } catch {}
     populateKatSelects();
@@ -381,8 +402,13 @@ async function deleteKategorie(id) {
 
 async function loadArtikel() {
     const kat = document.getElementById('filterKategorie').value;
+    let url = '/artikel';
+    const params = [];
+    if (kat) params.push(`kategorie=${kat}`);
+    if (kritischerFilterAktiv) params.push('kritisch=true');
+    if (params.length > 0) url += '?' + params.join('&');
     try {
-        const r = await apiCall('/artikel' + (kat ? `?kategorie=${kat}` : ''));
+        const r = await apiCall(url);
         if (r.ok) {
             artikelCache = await r.json();
             renderArtikelTabelle(artikelCache);
