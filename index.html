@@ -90,12 +90,15 @@
         .kritisch-btn:hover { background: rgba(255,138,128,0.15); }
         .kritisch-btn.aktiv { background: #e53935; color: white; }
         body.dark-mode .kritisch-btn.aktiv { background: #ff8a80; color: #1e1e2f; }
+        .csv-btn { background: transparent; border: 2px solid #2e7d32; color: #2e7d32; }
+        body.dark-mode .csv-btn { border-color: #66bb6a; color: #66bb6a; }
+        .csv-btn:hover { background: rgba(76,175,80,0.1); }
 
         /* Druck-Stile */
         @media print {
             body { background: white !important; padding: 0; margin: 0; }
             .container { box-shadow: none; border: none; padding: 20px; backdrop-filter: none; background: white !important; max-width: 100%; }
-            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn,
+            .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn, .csv-btn,
             .modal-overlay, .tabs, .manage-kat-btn, .logout-btn, .dark-mode-btn, .password-btn, .edit-btn, .auswahl-checkbox,
             .artikel-actions, .liste-actions, .modal, .close-modal, .btn-danger, .btn-selection, .btn-aktivitaeten,
             .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .einladenFormular {
@@ -150,6 +153,7 @@
                     <option value="">Alle Kategorien</option>
                 </select>
                 <button id="btnKritisch" class="btn kritisch-btn" onclick="toggleKritischerFilter()">⚠️ Kritische</button>
+                <button class="btn csv-btn" onclick="exportiereCSV()">📥 CSV Export</button>
                 <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
                 <button class="btn druck-btn" onclick="window.print()">🖨️ Drucken</button>
             </div>
@@ -334,6 +338,32 @@ function toggleKritischerFilter() {
         btn.textContent = '⚠️ Kritische';
     }
     loadArtikel();
+}
+
+// CSV-Export
+function exportiereCSV() {
+    if (artikelCache.length === 0) {
+        alert('Keine Artikel zum Exportieren vorhanden.');
+        return;
+    }
+    const header = ['Name', 'Kategorie', 'Preis', 'Bestand', 'Mindestbestand'];
+    const rows = artikelCache.map(a => [
+        a.name,
+        a.kategorie_name || '',
+        a.preis ? a.preis.toFixed(2).replace('.', ',') : '',
+        a.bestand || 0,
+        a.mindestbestand || 0
+    ]);
+    let csv = header.join(';') + '\n';
+    rows.forEach(r => csv += r.join(';') + '\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'artikel_export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 async function loadKategorien() {
