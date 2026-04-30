@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warenwirtschaft</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>📦</text></svg>">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #ece9e6 0%, #ffffff 100%);
+            min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
+            padding: 40px 20px; transition: background 0.4s;
+        }
+        body.dark-mode { background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%); }
+        .container {
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(20px);
+            border-radius: 28px; box-shadow: 0 25px 60px rgba(0,0,0,0.12);
+            padding: 32px 28px; width: 100%; max-width: 900px;
+            border: 1px solid rgba(255,255,255,0.6); transition: background 0.4s, box-shadow 0.4s;
+        }
+        body.dark-mode .container { background: rgba(38,38,60,0.9); border-color: rgba(255,255,255,0.08); box-shadow: 0 25px 60px rgba(0,0,0,0.5); color: #eee; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+        .header h1 {
+            font-size: 2rem; font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        body.dark-mode .header h1 { background: linear-gradient(135deg, #9b8cf2, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .header-buttons { display: flex; gap: 12px; }
+        .btn {
+            padding: 10px 18px; border-radius: 30px; font-weight: 600; cursor: pointer; font-size: 14px;
+            background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); color: #444;
+            transition: all 0.25s; backdrop-filter: blur(6px); white-space: nowrap;
+        }
+        .btn:hover { background: rgba(255,255,255,0.95); box-shadow: 0 8px 20px rgba(0,0,0,0.08); transform: translateY(-1px); }
+        .btn:active { transform: scale(0.96); box-shadow: none; }
+        body.dark-mode .btn { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); color: #ddd; }
+        body.dark-mode .btn:hover { background: rgba(255,255,255,0.18); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        .btn-primary:hover { background: linear-gradient(135deg, #5a6fd6, #6a4190); box-shadow: 0 12px 28px rgba(102,126,234,0.35); }
+        .btn-danger { border-color: #ff8a80; color: #e53935; }
+        .btn-danger:hover { background: #ff8a80; color: white; border-color: transparent; }
+        body.dark-mode .btn-danger { border-color: #ff8a80; color: #ff8a80; }
+        body.dark-mode .btn-danger:hover { background: #ff8a80; color: #1e1e2f; }
+        .auth-box { background: rgba(248,249,255,0.8); backdrop-filter: blur(12px); border-radius: 20px; padding: 24px; margin-bottom: 28px; border: 1px solid rgba(0,0,0,0.04); }
+        body.dark-mode .auth-box { background: rgba(60,60,90,0.7); border-color: rgba(255,255,255,0.08); }
+        .auth-box input {
+            width: 100%; padding: 14px 16px; margin: 10px 0; border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 16px; font-size: 16px; font-family: inherit; background: rgba(255,255,255,0.8);
+        }
+        body.dark-mode .auth-box input { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); color: #eee; }
+        .auth-box input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 4px rgba(102,126,234,0.15); }
+        .auth-buttons { display: flex; gap: 14px; margin-top: 18px; }
+        .auth-btn {
+            flex: 1; padding: 14px; border: none; border-radius: 16px; font-size: 16px;
+            font-weight: 700; cursor: pointer; transition: all 0.25s;
+        }
+        .login-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .register-btn { background: rgba(0,0,0,0.05); color: #444; }
+        body.dark-mode .register-btn { background: rgba(255,255,255,0.08); color: #ddd; }
+        .auth-message { text-align: center; margin-top: 12px; font-size: 14px; min-height: 22px; }
+        .error { color: #e74c3c; } .success { color: #4CAF50; }
+        .hidden { display: none !important; }
+        input, select, textarea {
+            width: 100%; padding: 14px 16px; margin: 8px 0; border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 16px; font-size: 15px; font-family: inherit; background: rgba(255,255,255,0.8);
+        }
+        body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); color: #eee; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 4px rgba(102,126,234,0.15); }
+        .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .nav-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+        .nav-btn { padding: 10px 18px; border-radius: 20px; font-weight: 600; font-size: 14px; cursor: pointer; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.7); }
+        .nav-btn.active { background: #667eea; color: white; border-color: transparent; }
+        body.dark-mode .nav-btn.active { background: #9b8cf2; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 8px; border-bottom: 1px solid rgba(0,0,0,0.06); text-align: left; font-size: 14px; }
+        th { font-weight: 600; color: #555; }
+        body.dark-mode th { color: #ccc; }
+        body.dark-mode td { color: #ddd; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-low { background: rgba(255,138,128,0.2); color: #e53935; }
+        .badge-ok { background: rgba(76,175,80,0.15); color: #2e7d32; }
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            .container { padding: 24px 16px; border-radius: 22px; }
+            .header h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📦 Warenwirtschaft</h1>
+        <div class="header-buttons">
+            <button id="darkModeToggle" class="btn" onclick="toggleDarkMode()">🌙</button>
+            <button id="logoutBtn" class="btn btn-danger hidden" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="authBox" class="auth-box">
+        <input type="email" id="authEmail" placeholder="E-Mail">
+        <input type="password" id="authPassword" placeholder="Passwort">
+        <div class="auth-buttons">
+            <button class="auth-btn login-btn" onclick="login()">Anmelden</button>
+            <button class="auth-btn register-btn" onclick="register()">Registrieren</button>
+        </div>
+        <div id="authMessage" class="auth-message"></div>
+    </div>
+
+    <div id="appContent" class="hidden">
+        <div class="nav-bar">
+            <button class="nav-btn active" data-view="artikel" onclick="switchView('artikel')">📋 Artikel</button>
+            <button class="nav-btn" data-view="buchungen" onclick="switchView('buchungen')">📜 Buchungen</button>
+            <button class="nav-btn" data-view="team" onclick="switchView('team')">👥 Team</button>
+        </div>
+
+        <div id="viewArtikel">
+            <div class="row" style="margin-bottom:20px;">
+                <select id="filterKategorie" onchange="loadArtikel()">
+                    <option value="">Alle Kategorien</option>
+                </select>
+                <button class="btn btn-primary" onclick="openArtikelFormular()">➕ Neuer Artikel</button>
+            </div>
+            <div id="artikelTabelle"></div>
+
+            <div id="artikelFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
+                <h3 id="artikelFormTitel">Neuen Artikel anlegen</h3>
+                <input type="hidden" id="editArtikelId">
+                <input type="text" id="artikelName" placeholder="Artikelname">
+                <select id="artikelKategorie">
+                    <option value="">Kategorie wählen</option>
+                </select>
+                <input type="number" id="artikelPreis" placeholder="Preis (€)" step="0.01" min="0">
+                <input type="number" id="artikelMindestbestand" placeholder="Mindestbestand" min="0">
+                <div class="row">
+                    <button class="btn btn-primary" onclick="saveArtikel()">Speichern</button>
+                    <button class="btn" onclick="cancelArtikelForm()">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="viewBuchungen" class="hidden">
+            <div class="row" style="margin-bottom:20px;">
+                <select id="filterBuchungArtikel" onchange="loadBuchungen()">
+                    <option value="">Alle Artikel</option>
+                </select>
+                <button class="btn btn-primary" onclick="openBuchenFormular()">➕ Buchung</button>
+            </div>
+            <div id="buchungenTabelle"></div>
+
+            <div id="buchenFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
+                <h3>Wareneingang / -ausgang buchen</h3>
+                <select id="buchenArtikelId">
+                    <option value="">Artikel wählen</option>
+                </select>
+                <select id="buchenTyp">
+                    <option value="eingang">Wareneingang (+)</option>
+                    <option value="ausgang">Warenausgang (−)</option>
+                </select>
+                <input type="number" id="buchenMenge" placeholder="Menge" min="1">
+                <input type="text" id="buchenGrund" placeholder="Grund (optional)">
+                <div class="row">
+                    <button class="btn btn-primary" onclick="doBuchung()">Buchen</button>
+                    <button class="btn" onclick="cancelBuchenForm()">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="viewTeam" class="hidden">
+            <h3>Team-Mitglieder</h3>
+            <div id="teamTabelle"></div>
+            <div style="margin-top:20px;">
+                <button class="btn btn-primary" onclick="toggleEinladen()">➕ Mitglied einladen</button>
+                <div id="einladenFormular" class="hidden" style="margin-top:15px; background:rgba(248,249,255,0.8); padding:20px; border-radius:16px;">
+                    <input type="email" id="einladenEmail" placeholder="E-Mail des Benutzers">
+                    <select id="einladenRolle">
+                        <option value="user">Benutzer</option>
+                        <option value="lagerist">Lagerist</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="einladen()">Einladen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = 'https://warenwirtschaft-api.elber3763.workers.dev/api';
+let userRolle = 'user';
+let activeView = 'artikel';
+let kategorienCache = [];
+let artikelCache = [];
+
+async function apiCall(url, options = {}) {
+    const token = localStorage.getItem('token');
+    if (token) { options.headers = options.headers || {}; options.headers['Authorization'] = 'Bearer ' + token; }
+    return fetch(API + url, options);
+}
+
+function initDarkMode() {
+    if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('darkModeToggle').textContent = '☀️';
+    }
+}
+function toggleDarkMode() {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', isDark);
+    document.getElementById('darkModeToggle').textContent = isDark ? '☀️' : '🌙';
+}
+
+window.onload = () => { initDarkMode(); if (localStorage.getItem('token')) nachLogin(); };
+
+async function register() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const msg = document.getElementById('authMessage');
+    if (!email || !password) { msg.textContent = 'Bitte ausfüllen.'; msg.className = 'error'; return; }
+    try {
+        const resp = await fetch(API + '/register', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({email, password})
+        });
+        if (resp.ok) { msg.textContent = 'Registrierung erfolgreich.'; msg.className = 'success'; }
+        else if (resp.status === 409) { msg.textContent = 'E-Mail bereits registriert.'; msg.className = 'error'; }
+    } catch { msg.textContent = 'Server nicht erreichbar.'; msg.className = 'error'; }
+}
+
+async function login() {
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const msg = document.getElementById('authMessage');
+    if (!email || !password) { msg.textContent = 'Bitte ausfüllen.'; msg.className = 'error'; return; }
+    try {
+        const resp = await fetch(API + '/login', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({email, password})
+        });
+        if (resp.ok) {
+            const data = await resp.json();
+            localStorage.setItem('token', data.token);
+            userRolle = data.rolle;
+            nachLogin();
+        } else { msg.textContent = 'Ungültige Anmeldedaten.'; msg.className = 'error'; }
+    } catch { msg.textContent = 'Server nicht erreichbar.'; msg.className = 'error'; }
+}
+
+function nachLogin() {
+    document.getElementById('authBox').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    document.getElementById('appContent').classList.remove('hidden');
+    loadKategorien();
+    switchView('artikel');
+}
+function logout() { localStorage.clear(); location.reload(); }
+
+function switchView(view) {
+    activeView = view;
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-view="${view}"]`).classList.add('active');
+    document.getElementById('viewArtikel').classList.add('hidden');
+    document.getElementById('viewBuchungen').classList.add('hidden');
+    document.getElementById('viewTeam').classList.add('hidden');
+    if (view === 'artikel') { document.getElementById('viewArtikel').classList.remove('hidden'); loadArtikel(); }
+    else if (view === 'buchungen') { document.getElementById('viewBuchungen').classList.remove('hidden'); loadBuchungen(); }
+    else if (view === 'team') { document.getElementById('viewTeam').classList.remove('hidden'); loadTeam(); }
+}
+
+// Kategorien
+async function loadKategorien() {
+    try { const r = await apiCall('/kategorien'); if (r.ok) kategorienCache = await r.json(); } catch {}
+    populateKatSelects();
+}
+function populateKatSelects() {
+    const selects = ['filterKategorie','artikelKategorie','filterBuchungArtikel','buchenArtikelId'];
+    selects.forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        sel.innerHTML = id.includes('Buchung') || id.includes('buchen') ? '<option value="">Alle Artikel</option>' : '<option value="">Alle Kategorien</option>';
+        kategorienCache.forEach(k => { const o = document.createElement('option'); o.value = k.id; o.textContent = k.name; sel.appendChild(o); });
+    });
+}
+
+// Artikel
+async function loadArtikel() {
+    const kat = document.getElementById('filterKategorie').value;
+    try {
+        const r = await apiCall('/artikel' + (kat ? `?kategorie=${kat}` : ''));
+        if (r.ok) {
+            artikelCache = await r.json();
+            renderArtikelTabelle(artikelCache);
+        }
+    } catch {}
+}
+function renderArtikelTabelle(liste) {
+    const container = document.getElementById('artikelTabelle');
+    if (liste.length === 0) { container.innerHTML = '<p>Keine Artikel gefunden.</p>'; return; }
+    let html = '<table><thead><tr><th>Name</th><th>Kategorie</th><th>Preis</th><th>Bestand</th><th>Mindest.</th><th></th></tr></thead><tbody>';
+    liste.forEach(a => {
+        const bestandKlasse = a.bestand < a.mindestbestand ? 'badge-low' : 'badge-ok';
+        html += `<tr>
+            <td>${a.name}</td><td>${a.kategorie_name || '–'}</td><td>${a.preis ? a.preis.toFixed(2)+' €' : '–'}</td>
+            <td><span class="badge ${bestandKlasse}">${a.bestand || 0}</span></td>
+            <td>${a.mindestbestand || 0}</td>
+            <td>
+                <button class="btn" onclick="editArtikel(${a.id})">✏️</button>
+                ${userRolle === 'admin' ? `<button class="btn btn-danger" onclick="deleteArtikel(${a.id})">🗑️</button>` : ''}
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function openArtikelFormular() {
+    document.getElementById('artikelFormTitel').textContent = 'Neuen Artikel anlegen';
+    document.getElementById('editArtikelId').value = '';
+    document.getElementById('artikelName').value = '';
+    document.getElementById('artikelPreis').value = '';
+    document.getElementById('artikelMindestbestand').value = '';
+    document.getElementById('artikelKategorie').value = '';
+    document.getElementById('artikelFormular').classList.remove('hidden');
+}
+function cancelArtikelForm() { document.getElementById('artikelFormular').classList.add('hidden'); }
+async function saveArtikel() {
+    const id = document.getElementById('editArtikelId').value;
+    const body = {
+        name: document.getElementById('artikelName').value.trim(),
+        kategorie_id: document.getElementById('artikelKategorie').value || null,
+        preis: document.getElementById('artikelPreis').value ? parseFloat(document.getElementById('artikelPreis').value) : null,
+        mindestbestand: document.getElementById('artikelMindestbestand').value || 0
+    };
+    if (!body.name) return alert('Name erforderlich');
+    try {
+        const r = id
+            ? await apiCall('/artikel/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) })
+            : await apiCall('/artikel', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (r.ok) { cancelArtikelForm(); loadArtikel(); }
+    } catch { alert('Fehler'); }
+}
+function editArtikel(id) {
+    const a = artikelCache.find(x => x.id === id);
+    if (!a) return;
+    document.getElementById('artikelFormTitel').textContent = 'Artikel bearbeiten';
+    document.getElementById('editArtikelId').value = a.id;
+    document.getElementById('artikelName').value = a.name;
+    document.getElementById('artikelPreis').value = a.preis || '';
+    document.getElementById('artikelMindestbestand').value = a.mindestbestand || 0;
+    document.getElementById('artikelKategorie').value = a.kategorie_id || '';
+    document.getElementById('artikelFormular').classList.remove('hidden');
+}
+async function deleteArtikel(id) {
+    if (!confirm('Artikel löschen?')) return;
+    try { await apiCall('/artikel/' + id, { method: 'DELETE' }); loadArtikel(); } catch { alert('Fehler'); }
+}
+
+// Buchungen
+async function loadBuchungen() {
+    const artId = document.getElementById('filterBuchungArtikel').value;
+    try {
+        const r = await apiCall('/buchungen' + (artId ? `?artikel_id=${artId}` : ''));
+        if (r.ok) {
+            const buchungen = await r.json();
+            let html = '<table><thead><tr><th>Zeitpunkt</th><th>Artikel</th><th>Typ</th><th>Menge</th><th>Grund</th><th>Benutzer</th></tr></thead><tbody>';
+            buchungen.forEach(b => {
+                html += `<tr>
+                    <td>${new Date(b.zeitpunkt).toLocaleString('de-DE')}</td><td>${b.artikel_name}</td>
+                    <td>${b.typ === 'eingang' ? '➕ Eingang' : '➖ Ausgang'}</td>
+                    <td>${b.menge}</td><td>${b.grund || '–'}</td><td>${b.user_email}</td>
+                </tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('buchungenTabelle').innerHTML = buchungen.length === 0 ? '<p>Keine Buchungen.</p>' : html;
+        }
+    } catch {}
+}
+function openBuchenFormular() { document.getElementById('buchenFormular').classList.remove('hidden'); }
+function cancelBuchenForm() { document.getElementById('buchenFormular').classList.add('hidden'); }
+async function doBuchung() {
+    const body = {
+        artikel_id: document.getElementById('buchenArtikelId').value,
+        typ: document.getElementById('buchenTyp').value,
+        menge: parseInt(document.getElementById('buchenMenge').value),
+        grund: document.getElementById('buchenGrund').value.trim()
+    };
+    if (!body.artikel_id || !body.menge) return alert('Artikel und Menge erforderlich');
+    try {
+        const r = await apiCall('/buchungen', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (r.ok) { cancelBuchenForm(); loadBuchungen(); loadArtikel(); }
+        else { const msg = await r.text(); alert(msg); }
+    } catch { alert('Fehler'); }
+}
+
+// Team
+async function loadTeam() {
+    try {
+        const r = await apiCall('/team');
+        if (r.ok) {
+            const mitglieder = await r.json();
+            let html = '<table><thead><tr><th>E-Mail</th><th>Rolle</th><th>Beigetreten</th></tr></thead><tbody>';
+            mitglieder.forEach(m => { html += `<tr><td>${m.email}</td><td>${m.rolle}</td><td>${new Date(m.joined_at).toLocaleDateString('de-DE')}</td></tr>`; });
+            html += '</tbody></table>';
+            document.getElementById('teamTabelle').innerHTML = html;
+        }
+    } catch {}
+}
+function toggleEinladen() { document.getElementById('einladenFormular').classList.toggle('hidden'); }
+async function einladen() {
+    const email = document.getElementById('einladenEmail').value.trim();
+    const rolle = document.getElementById('einladenRolle').value;
+    if (!email) return alert('E-Mail eingeben');
+    try {
+        const r = await apiCall('/team/einladen', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, rolle}) });
+        if (r.ok) { loadTeam(); toggleEinladen(); alert('Benutzer eingeladen.'); }
+        else { const msg = await r.text(); alert(msg); }
+    } catch { alert('Fehler'); }
+}
+</script>
+</body>
+</html>
