@@ -101,7 +101,7 @@
             .header-buttons, .btn, .nav-bar, .auth-box, .hidden, .neue-liste-form, .neuer-artikel-form, .back-btn, .faellig-badge, .druck-btn, .kritisch-btn, .csv-btn,
             .modal-overlay, .tabs, .manage-kat-btn, .logout-btn, .dark-mode-btn, .password-btn, .edit-btn, .auswahl-checkbox,
             .artikel-actions, .liste-actions, .modal, .close-modal, .btn-danger, .btn-selection, .btn-aktivitaeten,
-            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .einladenFormular {
+            .bulk-bar, .sort-row label, select, .buchenFormular, .artikelFormular, .kategorieFormular, .lieferantFormular, .einladenFormular {
                 display: none !important;
             }
             .artikel-item, .liste-row { border-bottom: 1px solid #ccc; padding: 8px 0; }
@@ -143,6 +143,7 @@
             <button class="nav-btn active" data-view="artikel" onclick="switchView('artikel')">📋 Artikel</button>
             <button class="nav-btn" data-view="buchungen" onclick="switchView('buchungen')">📜 Buchungen</button>
             <button class="nav-btn" data-view="kategorien" onclick="switchView('kategorien')">📂 Kategorien</button>
+            <button class="nav-btn" data-view="lieferanten" onclick="switchView('lieferanten')">🚚 Lieferanten</button>
             <button class="nav-btn" data-view="team" onclick="switchView('team')">👥 Team</button>
         </div>
 
@@ -165,6 +166,9 @@
                 <input type="text" id="artikelName" placeholder="Artikelname">
                 <select id="artikelKategorie">
                     <option value="">Kategorie wählen</option>
+                </select>
+                <select id="artikelLieferant">
+                    <option value="">Lieferant wählen</option>
                 </select>
                 <input type="number" id="artikelPreis" placeholder="Preis (€)" step="0.01" min="0">
                 <input type="number" id="artikelMindestbestand" placeholder="Mindestbestand" min="0">
@@ -221,6 +225,25 @@
             </div>
         </div>
 
+        <!-- Lieferanten-View (NEU) -->
+        <div id="viewLieferanten" class="hidden">
+            <div class="row" style="margin-bottom:20px;">
+                <button class="btn btn-primary" onclick="openLieferantFormular()">➕ Neuer Lieferant</button>
+            </div>
+            <div id="lieferantenTabelle"></div>
+
+            <div id="lieferantFormular" class="hidden" style="background:rgba(248,249,255,0.8); padding:24px; border-radius:20px; margin-top:20px;">
+                <h3 id="lieferantFormTitel">Neuen Lieferanten anlegen</h3>
+                <input type="hidden" id="editLieferantId">
+                <input type="text" id="lieferantName" placeholder="Lieferantenname">
+                <input type="text" id="lieferantKontakt" placeholder="Kontakt (optional)">
+                <div class="row">
+                    <button class="btn btn-primary" onclick="saveLieferant()">Speichern</button>
+                    <button class="btn" onclick="cancelLieferantForm()">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Team-View -->
         <div id="viewTeam" class="hidden">
             <h3>Team-Mitglieder</h3>
@@ -247,6 +270,7 @@ let userRolle = 'user';
 let activeView = 'artikel';
 let kritischerFilterAktiv = false;
 let kategorienCache = [];
+let lieferantenCache = [];
 let artikelCache = [];
 
 async function apiCall(url, options = {}) {
@@ -308,6 +332,7 @@ function nachLogin() {
     document.getElementById('logoutBtn').classList.remove('hidden');
     document.getElementById('appContent').classList.remove('hidden');
     loadKategorien();
+    loadLieferanten();
     switchView('artikel');
 }
 function logout() { localStorage.clear(); location.reload(); }
@@ -319,10 +344,12 @@ function switchView(view) {
     document.getElementById('viewArtikel').classList.add('hidden');
     document.getElementById('viewBuchungen').classList.add('hidden');
     document.getElementById('viewKategorien').classList.add('hidden');
+    document.getElementById('viewLieferanten').classList.add('hidden');
     document.getElementById('viewTeam').classList.add('hidden');
     if (view === 'artikel') { document.getElementById('viewArtikel').classList.remove('hidden'); loadArtikel(); }
     else if (view === 'buchungen') { document.getElementById('viewBuchungen').classList.remove('hidden'); loadBuchungen(); }
     else if (view === 'kategorien') { document.getElementById('viewKategorien').classList.remove('hidden'); loadKategorienView(); }
+    else if (view === 'lieferanten') { document.getElementById('viewLieferanten').classList.remove('hidden'); loadLieferantenView(); }
     else if (view === 'team') { document.getElementById('viewTeam').classList.remove('hidden'); loadTeam(); }
 }
 
@@ -366,6 +393,7 @@ function exportiereCSV() {
     URL.revokeObjectURL(url);
 }
 
+// ---------- Kategorien ----------
 async function loadKategorien() {
     try { const r = await apiCall('/kategorien'); if (r.ok) kategorienCache = await r.json(); } catch {}
     populateKatSelects();
@@ -430,6 +458,72 @@ async function deleteKategorie(id) {
     try { await apiCall('/kategorien/' + id, { method: 'DELETE' }); loadKategorien(); loadKategorienView(); } catch { alert('Fehler'); }
 }
 
+// ---------- Lieferanten (NEU) ----------
+async function loadLieferanten() {
+    try { const r = await apiCall('/lieferanten'); if (r.ok) lieferantenCache = await r.json(); } catch {}
+    populateLieferantSelect();
+}
+function populateLieferantSelect() {
+    const sel = document.getElementById('artikelLieferant');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Lieferant wählen</option>';
+    lieferantenCache.forEach(l => { const o = document.createElement('option'); o.value = l.id; o.textContent = l.name; sel.appendChild(o); });
+}
+
+function loadLieferantenView() {
+    const container = document.getElementById('lieferantenTabelle');
+    if (lieferantenCache.length === 0) { container.innerHTML = '<p>Keine Lieferanten vorhanden.</p>'; return; }
+    let html = '<table><thead><tr><th>Name</th><th>Kontakt</th><th></th></tr></thead><tbody>';
+    lieferantenCache.forEach(l => {
+        html += `<tr>
+            <td>${l.name}</td><td>${l.kontakt || '–'}</td>
+            <td>
+                <button class="btn" onclick="openLieferantFormular(${l.id})">✏️</button>
+                ${userRolle === 'admin' ? `<button class="btn btn-danger" onclick="deleteLieferant(${l.id})">🗑️</button>` : ''}
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function openLieferantFormular(id = null) {
+    if (id) {
+        const lie = lieferantenCache.find(l => l.id === id);
+        if (!lie) return;
+        document.getElementById('lieferantFormTitel').textContent = 'Lieferant bearbeiten';
+        document.getElementById('editLieferantId').value = lie.id;
+        document.getElementById('lieferantName').value = lie.name;
+        document.getElementById('lieferantKontakt').value = lie.kontakt || '';
+    } else {
+        document.getElementById('lieferantFormTitel').textContent = 'Neuen Lieferanten anlegen';
+        document.getElementById('editLieferantId').value = '';
+        document.getElementById('lieferantName').value = '';
+        document.getElementById('lieferantKontakt').value = '';
+    }
+    document.getElementById('lieferantFormular').classList.remove('hidden');
+}
+function cancelLieferantForm() { document.getElementById('lieferantFormular').classList.add('hidden'); }
+
+async function saveLieferant() {
+    const id = document.getElementById('editLieferantId').value;
+    const name = document.getElementById('lieferantName').value.trim();
+    const kontakt = document.getElementById('lieferantKontakt').value.trim();
+    if (!name) return alert('Name erforderlich');
+    try {
+        const r = id
+            ? await apiCall('/lieferanten/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, kontakt}) })
+            : await apiCall('/lieferanten', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, kontakt}) });
+        if (r.ok) { cancelLieferantForm(); loadLieferanten(); loadLieferantenView(); }
+    } catch { alert('Fehler'); }
+}
+
+async function deleteLieferant(id) {
+    if (!confirm('Lieferant löschen?')) return;
+    try { await apiCall('/lieferanten/' + id, { method: 'DELETE' }); loadLieferanten(); loadLieferantenView(); } catch { alert('Fehler'); }
+}
+
+// ---------- Artikel ----------
 async function loadArtikel() {
     const kat = document.getElementById('filterKategorie').value;
     let url = '/artikel';
@@ -471,6 +565,7 @@ function openArtikelFormular() {
     document.getElementById('artikelPreis').value = '';
     document.getElementById('artikelMindestbestand').value = '';
     document.getElementById('artikelKategorie').value = '';
+    document.getElementById('artikelLieferant').value = '';
     document.getElementById('artikelFormular').classList.remove('hidden');
 }
 function cancelArtikelForm() { document.getElementById('artikelFormular').classList.add('hidden'); }
@@ -499,6 +594,7 @@ function editArtikel(id) {
     document.getElementById('artikelPreis').value = a.preis || '';
     document.getElementById('artikelMindestbestand').value = a.mindestbestand || 0;
     document.getElementById('artikelKategorie').value = a.kategorie_id || '';
+    document.getElementById('artikelLieferant').value = a.lieferant_id || '';
     document.getElementById('artikelFormular').classList.remove('hidden');
 }
 async function deleteArtikel(id) {
@@ -506,6 +602,7 @@ async function deleteArtikel(id) {
     try { await apiCall('/artikel/' + id, { method: 'DELETE' }); loadArtikel(); } catch { alert('Fehler'); }
 }
 
+// ---------- Buchungen ----------
 async function loadBuchungen() {
     const artId = document.getElementById('filterBuchungArtikel').value;
     try {
@@ -542,6 +639,7 @@ async function doBuchung() {
     } catch { alert('Fehler'); }
 }
 
+// ---------- Team ----------
 async function loadTeam() {
     try {
         const r = await apiCall('/team');
